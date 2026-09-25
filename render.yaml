@@ -1,0 +1,35 @@
+# Render Blueprint for the API. The web app is a separate static site that
+# forwards /api/* to this service, so the browser only ever talks to one origin.
+services:
+  - type: web
+    name: agenda-backend
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    # Deploy only after the GitHub Actions checks on main have passed.
+    autoDeployTrigger: checksPass
+    # devDependencies (TypeScript, @types) are needed to build, then pruned.
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
+    startCommand: node dist/server.js
+    healthCheckPath: /api/v1/health
+    buildFilter:
+      ignoredPaths:
+        - docs/**
+        - '**/*.md'
+        - test/**
+        - '**/*.test.ts'
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: agenda
+      # The web app's origin, e.g. https://agenda.onrender.com
+      - key: CORS_ORIGINS
+        sync: false
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      - key: LOG_LEVEL
+        value: info
