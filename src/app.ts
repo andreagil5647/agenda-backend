@@ -2,6 +2,7 @@ import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
+import type { Db } from 'mongodb';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import type { Config } from './config/env.js';
@@ -13,6 +14,7 @@ import { API_BASE_PATH, createApiRouter } from './routes/index.js';
 export interface AppDependencies {
   config: Config;
   logger: Logger;
+  db: Db;
 }
 
 export interface App {
@@ -20,7 +22,7 @@ export interface App {
   openApiDocument: OpenApiDocument;
 }
 
-export function createApp({ config, logger }: AppDependencies): App {
+export function createApp({ config, logger, db }: AppDependencies): App {
   const app = express();
 
   // Render terminates TLS in front of the service; trusting exactly that many
@@ -40,7 +42,7 @@ export function createApp({ config, logger }: AppDependencies): App {
   app.use(express.json({ limit: '100kb' }));
 
   const registry = new OpenAPIRegistry();
-  app.use(API_BASE_PATH, createApiRouter({ config, registry }));
+  app.use(API_BASE_PATH, createApiRouter({ config, logger, db, registry }));
 
   // Built after the routers are created, because creating them fills the registry.
   const openApiDocument = buildOpenApiDocument(registry);

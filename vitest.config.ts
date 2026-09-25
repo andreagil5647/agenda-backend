@@ -10,6 +10,16 @@ export default defineConfig({
           environment: 'node',
         },
       },
+      {
+        test: {
+          name: 'integration',
+          include: ['test/integration/**/*.test.ts'],
+          environment: 'node',
+          globalSetup: ['test/setup/mongo-global-setup.ts'],
+          // The first run downloads a mongod binary.
+          hookTimeout: 120_000,
+        },
+      },
     ],
     coverage: {
       provider: 'v8',

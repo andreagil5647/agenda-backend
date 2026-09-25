@@ -1,10 +1,18 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { createTestConfig, silentLogger } from '../test/helpers/test-config.js';
+import {
+  createTestConfig,
+  createUnreachableDb,
+  silentLogger,
+} from '../test/helpers/test-config.js';
 import { createApp } from './app.js';
 
 function buildApp(env: NodeJS.ProcessEnv = {}) {
-  return createApp({ config: createTestConfig(env), logger: silentLogger }).app;
+  return createApp({
+    config: createTestConfig(env),
+    logger: silentLogger,
+    db: createUnreachableDb(),
+  }).app;
 }
 
 describe('createApp', () => {
