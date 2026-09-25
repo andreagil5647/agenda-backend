@@ -1,13 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
-import { AppError, NotFoundError, type ErrorCode } from '../errors/app-error.js';
-
-export interface ErrorResponseBody {
-  code: ErrorCode;
-  message: string;
-  details?: Record<string, unknown>;
-  requestId: string;
-}
+import { AppError, NotFoundError } from '../errors/app-error.js';
+import type { ErrorResponseBody } from '../schemas/common.schemas.js';
 
 interface BodyParserError {
   type: string;
