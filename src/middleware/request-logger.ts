@@ -24,6 +24,16 @@ export function createRequestLogger(logger: Logger, quietPathPrefix: string) {
       if (res.statusCode >= 400) return 'warn';
       return 'info';
     },
+    // Headers are left out: they are mostly noise and the likeliest place for
+    // secrets. Client IPs are left out as personal data.
+    serializers: {
+      req: (req: { id: unknown; method: string; url: string }) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+      }),
+      res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+    },
     // Health checks run every few seconds (platform probe, client warm-up)
     // and would drown out the useful lines.
     autoLogging: { ignore: (req) => req.url?.startsWith(quietPathPrefix) ?? false },
