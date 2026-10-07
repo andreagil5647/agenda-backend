@@ -1,8 +1,18 @@
-import { MongoServerError, ObjectId, type Collection, type Db, type Filter } from 'mongodb';
-import { ConflictError } from '../errors/app-error.js';
 import {
+  MongoServerError,
+  ObjectId,
+  type Collection,
+  type Db,
+  type Filter,
+  type MatchKeysAndValues,
+} from 'mongodb';
+import { ConflictError, NotFoundError } from '../errors/app-error.js';
+import {
+  byIdFilter,
   createRepositoryMetadata,
   objectIdToString,
+  softDeleteUpdate,
+  versionedUpdate,
   type RepositoryDocument,
 } from './base.repository.js';
 
@@ -100,5 +110,39 @@ export class UsersRepository {
 
   async findActiveById(id: ObjectId, now = new Date()): Promise<UserDocument | null> {
     return this.users.findOne({ _id: id, ...activeUserFilter(now) });
+  }
+
+  async updateSettings(
+    id: ObjectId,
+    settings: Partial<UserSettings>,
+    now = new Date(),
+  ): Promise<UserDocument> {
+    const result = await this.users.findOneAndUpdate(
+      byIdFilter<UserDocument>(id),
+      versionedUpdate<UserDocument>(
+        Object.fromEntries(
+          Object.entries(settings).map(([key, value]) => [`settings.${key}`, value]),
+        ) as MatchKeysAndValues<UserDocument>,
+        now,
+      ),
+      { returnDocument: 'after' },
+    );
+
+    if (!result) {
+      throw new NotFoundError('User');
+    }
+
+    return result;
+  }
+
+  async softDelete(id: ObjectId, now = new Date()): Promise<void> {
+    const result = await this.users.updateOne(
+      byIdFilter<UserDocument>(id),
+      softDeleteUpdate<UserDocument>(now),
+    );
+
+    if (result.matchedCount === 0) {
+      throw new NotFoundError('User');
+    }
   }
 }
