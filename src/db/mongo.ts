@@ -1,5 +1,6 @@
 import { MongoClient, type Db } from 'mongodb';
 import type { Logger } from 'pino';
+import { ensureDatabaseIndexes } from './indexes.js';
 
 export interface Database {
   client: MongoClient;
@@ -21,6 +22,7 @@ export async function connectToDatabase(
   await client.connect();
   const db = client.db(options.dbName);
   await db.command({ ping: 1 });
+  await ensureDatabaseIndexes(db);
   logger.info({ dbName: options.dbName }, 'Connected to MongoDB');
 
   return {

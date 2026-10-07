@@ -11,5 +11,6 @@ A superseded record stays in place with a link to the one that replaces it.
 | 0004 | [Layered modules and a code-first OpenAPI contract](0004-layers-and-code-first-openapi.md)      | Accepted |
 | 0005 | [Toolchain: TypeScript 6, ESM, Express 5, Vitest](0005-toolchain.md)                            | Accepted |
 | 0006 | [Optimistic concurrency with version ETags](0006-optimistic-concurrency-with-version-etags.md)  | Accepted |
+| 0007 | [Cookie sessions and CSRF protection](0007-cookie-sessions-and-csrf.md)                         | Accepted |
 
 New records copy [the template](template.md).
