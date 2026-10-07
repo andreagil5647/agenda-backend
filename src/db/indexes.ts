@@ -25,5 +25,10 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
       { key: { userId: 1, dueDate: 1 }, name: 'tasks_user_due_date' },
       { key: { userId: 1, deletedAt: 1 }, name: 'tasks_user_deleted' },
     ]),
+    db.collection('events').createIndexes([
+      { key: { userId: 1, calendarId: 1, startUtc: 1 }, name: 'events_user_calendar_start' },
+      { key: { userId: 1, startDate: 1 }, name: 'events_user_all_day_start' },
+      { key: { userId: 1, deletedAt: 1 }, name: 'events_user_deleted' },
+    ]),
   ]);
 }

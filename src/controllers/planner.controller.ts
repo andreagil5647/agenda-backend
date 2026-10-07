@@ -4,9 +4,12 @@ import type { PlannerService } from '../services/planner.service.js';
 import type {
   CalendarOrderRequest,
   CreateCalendarRequest,
+  CreateEventRequest,
   CreateTaskRequest,
+  EventsQuery,
   MoveTaskRequest,
   PatchCalendarRequest,
+  PatchEventRequest,
   PatchSettingsRequest,
   PatchTaskRequest,
   TasksQuery,
@@ -130,5 +133,42 @@ export class PlannerController {
   ): Promise<void> => {
     const { userId } = requireAuth(req);
     res.json(await this.plannerService.moveTask(userId, params.id, body));
+  };
+
+  listEvents = async (
+    { query }: { query: EventsQuery },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.json(await this.plannerService.listEvents(userId, query));
+  };
+
+  createEvent = async (
+    { body }: { body: CreateEventRequest },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.status(201).json(await this.plannerService.createEvent(userId, body));
+  };
+
+  updateEvent = async (
+    { params, body }: { params: { id: string }; body: PatchEventRequest },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.json(await this.plannerService.updateEvent(userId, params.id, body));
+  };
+
+  deleteEvent = async (
+    { params }: { params: { id: string } },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    await this.plannerService.deleteEvent(userId, params.id);
+    res.status(204).end();
   };
 }

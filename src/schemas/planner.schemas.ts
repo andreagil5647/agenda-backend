@@ -104,6 +104,85 @@ export const moveTaskRequestSchema = z
   })
   .meta({ id: 'MoveTaskRequest' });
 
+export const eventSchema = z
+  .object({
+    id: z.string(),
+    calendarId: z.string(),
+    title: z.string(),
+    notes: z.string().nullable(),
+    taskId: z.string().nullable(),
+    kind: z.enum(['timed', 'allDay']),
+    startUtc: isoDateTimeSchema.nullable(),
+    endUtc: isoDateTimeSchema.nullable(),
+    timeZone: z.string().nullable(),
+    startDate: isoDateSchema.nullable(),
+    endDate: isoDateSchema.nullable(),
+    version: z.number().int().positive(),
+    createdAt: isoDateTimeSchema,
+    updatedAt: isoDateTimeSchema,
+  })
+  .meta({ id: 'Event' });
+
+export const eventsQuerySchema = z.object({
+  from: isoDateTimeSchema,
+  to: isoDateTimeSchema,
+  calendarIds: z
+    .string()
+    .optional()
+    .transform((value) => value?.split(',').filter(Boolean)),
+});
+
+export const createEventRequestSchema = z
+  .discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('timed'),
+      calendarId: z.string().regex(/^[0-9a-f]{24}$/i),
+      title: z.string().trim().min(1).max(160),
+      notes: z.string().trim().max(2_000).nullish(),
+      taskId: z
+        .string()
+        .regex(/^[0-9a-f]{24}$/i)
+        .nullish(),
+      startUtc: isoDateTimeSchema,
+      endUtc: isoDateTimeSchema,
+      timeZone: z.string().trim().min(1).max(80),
+    }),
+    z.object({
+      kind: z.literal('allDay'),
+      calendarId: z.string().regex(/^[0-9a-f]{24}$/i),
+      title: z.string().trim().min(1).max(160),
+      notes: z.string().trim().max(2_000).nullish(),
+      taskId: z
+        .string()
+        .regex(/^[0-9a-f]{24}$/i)
+        .nullish(),
+      startDate: isoDateSchema,
+      endDate: isoDateSchema,
+    }),
+  ])
+  .meta({ id: 'CreateEventRequest' });
+
+export const patchEventRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(160).optional(),
+    notes: z.string().trim().max(2_000).nullable().optional(),
+    calendarId: z
+      .string()
+      .regex(/^[0-9a-f]{24}$/i)
+      .optional(),
+    taskId: z
+      .string()
+      .regex(/^[0-9a-f]{24}$/i)
+      .nullable()
+      .optional(),
+    startUtc: isoDateTimeSchema.optional(),
+    endUtc: isoDateTimeSchema.optional(),
+    timeZone: z.string().trim().min(1).max(80).optional(),
+    startDate: isoDateSchema.optional(),
+    endDate: isoDateSchema.optional(),
+  })
+  .meta({ id: 'PatchEventRequest' });
+
 export type PatchSettingsRequest = z.infer<typeof patchSettingsRequestSchema>;
 export type CreateCalendarRequest = z.infer<typeof createCalendarRequestSchema>;
 export type PatchCalendarRequest = z.infer<typeof patchCalendarRequestSchema>;
@@ -112,3 +191,6 @@ export type CreateTaskRequest = z.infer<typeof createTaskRequestSchema>;
 export type PatchTaskRequest = z.infer<typeof patchTaskRequestSchema>;
 export type MoveTaskRequest = z.infer<typeof moveTaskRequestSchema>;
 export type TasksQuery = z.infer<typeof tasksQuerySchema>;
+export type CreateEventRequest = z.infer<typeof createEventRequestSchema>;
+export type PatchEventRequest = z.infer<typeof patchEventRequestSchema>;
+export type EventsQuery = z.infer<typeof eventsQuerySchema>;

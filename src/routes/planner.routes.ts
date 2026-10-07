@@ -6,11 +6,15 @@ import {
   calendarOrderRequestSchema,
   calendarSchema,
   createCalendarRequestSchema,
+  createEventRequestSchema,
   createTaskRequestSchema,
+  eventSchema,
+  eventsQuerySchema,
   meResponseSchema,
   moveTaskRequestSchema,
   objectIdParamSchema,
   patchCalendarRequestSchema,
+  patchEventRequestSchema,
   patchSettingsRequestSchema,
   patchTaskRequestSchema,
   taskSchema,
@@ -29,11 +33,12 @@ export function createPlannerRouter(
   basePath: string,
   controller: PlannerController,
   authMiddleware: RequestHandler,
-): [Router, Router, Router] {
+): [Router, Router, Router, Router] {
   return [
     createMeRouter(registry, `${basePath}/me`, controller, authMiddleware),
     createCalendarsRouter(registry, `${basePath}/calendars`, controller, authMiddleware),
     createTasksRouter(registry, `${basePath}/tasks`, controller, authMiddleware),
+    createEventsRouter(registry, `${basePath}/events`, controller, authMiddleware),
   ];
 }
 
@@ -231,6 +236,62 @@ function createTasksRouter(
     request: { params: objectIdParamSchema, body: moveTaskRequestSchema },
     responses: { 200: { description: 'Moved task', schema: taskSchema }, 404: notFound },
     handler: controller.moveTask,
+  });
+
+  return router;
+}
+
+function createEventsRouter(
+  registry: OpenAPIRegistry,
+  mountPath: string,
+  controller: PlannerController,
+  authMiddleware: RequestHandler,
+) {
+  const { router, route } = createRouteBuilder(registry, mountPath);
+  router.use(authMiddleware);
+
+  route({
+    method: 'get',
+    path: '/',
+    operationId: 'listEvents',
+    summary: 'List event instances in a range',
+    tags: ['Events'],
+    request: { query: eventsQuerySchema },
+    responses: { 200: { description: 'Events', schema: eventSchema.array() } },
+    handler: controller.listEvents,
+  });
+
+  route({
+    method: 'post',
+    path: '/',
+    operationId: 'createEvent',
+    summary: 'Create a non-recurring event',
+    tags: ['Events'],
+    request: { body: createEventRequestSchema },
+    responses: { 201: { description: 'Created event', schema: eventSchema } },
+    handler: controller.createEvent,
+  });
+
+  route({
+    method: 'patch',
+    path: '/:id',
+    operationId: 'updateEvent',
+    summary: 'Update a non-recurring event',
+    tags: ['Events'],
+    request: { params: objectIdParamSchema, body: patchEventRequestSchema },
+    responses: { 200: { description: 'Updated event', schema: eventSchema }, 404: notFound },
+    handler: controller.updateEvent,
+  });
+
+  route({
+    method: 'delete',
+    path: '/:id',
+    operationId: 'deleteEvent',
+    summary: 'Delete a non-recurring event',
+    tags: ['Events'],
+    request: { params: objectIdParamSchema },
+    responses: { 204: { description: 'Deleted event' }, 404: notFound },
+    handler: controller.deleteEvent,
   });
 
   return router;
