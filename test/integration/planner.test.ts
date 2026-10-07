@@ -19,6 +19,12 @@ interface CalendarBody {
   visible: boolean;
 }
 
+interface TaskBody {
+  id: string;
+  title: string;
+  status: string;
+}
+
 interface SettingsBody {
   settings: { timeZone: string; theme: string };
 }
@@ -80,7 +86,7 @@ describe('planner API', () => {
     expect(res.body).toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
-  it('supports settings and calendars for a signed-in user', async () => {
+  it('supports settings, calendars and tasks for a signed-in user', async () => {
     const auth = await register(app);
 
     const me = await request(app).get('/api/v1/me').set('Cookie', auth.cookie);
@@ -113,5 +119,41 @@ describe('planner API', () => {
     expect(calendar.status).toBe(201);
     const calendarBody = calendar.body as CalendarBody;
     expect(calendarBody).toMatchObject({ name: 'Work', colorKey: 'blue', visible: true });
+
+    const task = await request(app)
+      .post('/api/v1/tasks')
+      .set('Origin', origin)
+      .set('Cookie', auth.cookie)
+      .set('X-CSRF-Token', auth.csrfToken)
+      .send({ title: 'Write integration test', dueDate: '2026-10-07', priority: 'high' });
+    expect(task.status).toBe(201);
+    const taskBody = task.body as TaskBody;
+    expect(taskBody).toMatchObject({ title: 'Write integration test', status: 'todo' });
+
+    const updatedTask = await request(app)
+      .patch(`/api/v1/tasks/${taskBody.id}`)
+      .set('Origin', origin)
+      .set('Cookie', auth.cookie)
+      .set('X-CSRF-Token', auth.csrfToken)
+      .send({ status: 'done' });
+    expect(updatedTask.status).toBe(200);
+    const updatedTaskBody = updatedTask.body as TaskBody;
+    expect(updatedTaskBody.status).toBe('done');
+
+    const deletedTask = await request(app)
+      .delete(`/api/v1/tasks/${taskBody.id}`)
+      .set('Origin', origin)
+      .set('Cookie', auth.cookie)
+      .set('X-CSRF-Token', auth.csrfToken);
+    expect(deletedTask.status).toBe(204);
+
+    const restoredTask = await request(app)
+      .post(`/api/v1/tasks/${taskBody.id}/restore`)
+      .set('Origin', origin)
+      .set('Cookie', auth.cookie)
+      .set('X-CSRF-Token', auth.csrfToken);
+    expect(restoredTask.status).toBe(201);
+    const restoredTaskBody = restoredTask.body as TaskBody;
+    expect(restoredTaskBody.title).toBe('Write integration test');
   });
 });

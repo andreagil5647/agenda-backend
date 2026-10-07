@@ -6,10 +6,15 @@ import {
   calendarOrderRequestSchema,
   calendarSchema,
   createCalendarRequestSchema,
+  createTaskRequestSchema,
   meResponseSchema,
+  moveTaskRequestSchema,
   objectIdParamSchema,
   patchCalendarRequestSchema,
   patchSettingsRequestSchema,
+  patchTaskRequestSchema,
+  taskSchema,
+  tasksQuerySchema,
 } from '../schemas/planner.schemas.js';
 import { createRouteBuilder, type RouteResponse } from '../openapi/define-route.js';
 
@@ -24,10 +29,11 @@ export function createPlannerRouter(
   basePath: string,
   controller: PlannerController,
   authMiddleware: RequestHandler,
-): [Router, Router] {
+): [Router, Router, Router] {
   return [
     createMeRouter(registry, `${basePath}/me`, controller, authMiddleware),
     createCalendarsRouter(registry, `${basePath}/calendars`, controller, authMiddleware),
+    createTasksRouter(registry, `${basePath}/tasks`, controller, authMiddleware),
   ];
 }
 
@@ -147,6 +153,84 @@ function createCalendarsRouter(
     request: { body: calendarOrderRequestSchema },
     responses: { 200: { description: 'Reordered calendars', schema: calendarSchema.array() } },
     handler: controller.reorderCalendars,
+  });
+
+  return router;
+}
+
+function createTasksRouter(
+  registry: OpenAPIRegistry,
+  mountPath: string,
+  controller: PlannerController,
+  authMiddleware: RequestHandler,
+) {
+  const { router, route } = createRouteBuilder(registry, mountPath);
+  router.use(authMiddleware);
+
+  route({
+    method: 'get',
+    path: '/',
+    operationId: 'listTasks',
+    summary: 'List tasks',
+    tags: ['Tasks'],
+    request: { query: tasksQuerySchema },
+    responses: { 200: { description: 'Tasks', schema: taskSchema.array() } },
+    handler: controller.listTasks,
+  });
+
+  route({
+    method: 'post',
+    path: '/',
+    operationId: 'createTask',
+    summary: 'Create a task',
+    tags: ['Tasks'],
+    request: { body: createTaskRequestSchema },
+    responses: { 201: { description: 'Created task', schema: taskSchema } },
+    handler: controller.createTask,
+  });
+
+  route({
+    method: 'patch',
+    path: '/:id',
+    operationId: 'updateTask',
+    summary: 'Update a task',
+    tags: ['Tasks'],
+    request: { params: objectIdParamSchema, body: patchTaskRequestSchema },
+    responses: { 200: { description: 'Updated task', schema: taskSchema }, 404: notFound },
+    handler: controller.updateTask,
+  });
+
+  route({
+    method: 'delete',
+    path: '/:id',
+    operationId: 'deleteTask',
+    summary: 'Delete a task',
+    tags: ['Tasks'],
+    request: { params: objectIdParamSchema },
+    responses: { 204: { description: 'Deleted task' }, 404: notFound },
+    handler: controller.deleteTask,
+  });
+
+  route({
+    method: 'post',
+    path: '/:id/restore',
+    operationId: 'restoreTask',
+    summary: 'Restore a deleted task',
+    tags: ['Tasks'],
+    request: { params: objectIdParamSchema },
+    responses: { 201: { description: 'Restored task', schema: taskSchema }, 404: notFound },
+    handler: controller.restoreTask,
+  });
+
+  route({
+    method: 'put',
+    path: '/:id/position',
+    operationId: 'moveTask',
+    summary: 'Move a task',
+    tags: ['Tasks'],
+    request: { params: objectIdParamSchema, body: moveTaskRequestSchema },
+    responses: { 200: { description: 'Moved task', schema: taskSchema }, 404: notFound },
+    handler: controller.moveTask,
   });
 
   return router;

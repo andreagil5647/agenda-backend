@@ -11,6 +11,7 @@ import { createRateLimiter } from '../middleware/rate-limit.js';
 import { createRequestIntegrityMiddleware } from '../middleware/request-integrity.js';
 import { CalendarsRepository } from '../repositories/calendars.repository.js';
 import { SessionsRepository } from '../repositories/sessions.repository.js';
+import { TasksRepository } from '../repositories/tasks.repository.js';
 import { UsersRepository } from '../repositories/users.repository.js';
 import { AuthService } from '../services/auth.service.js';
 import { HealthService } from '../services/health.service.js';
@@ -48,17 +49,19 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   const usersRepository = new UsersRepository(db);
   const sessionsRepository = new SessionsRepository(db);
   const calendarsRepository = new CalendarsRepository(db);
+  const tasksRepository = new TasksRepository(db);
   const authService = new AuthService({ users: usersRepository, sessions: sessionsRepository });
   const plannerService = new PlannerService({
     users: usersRepository,
     sessions: sessionsRepository,
     calendars: calendarsRepository,
+    tasks: tasksRepository,
   });
   const authController = new AuthController(authService);
   const plannerController = new PlannerController(plannerService);
   const authMiddleware = createAuthMiddleware(authService);
   router.use('/auth', createAuthRouter(registry, `${API_BASE_PATH}/auth`, authController));
-  const [meRouter, calendarsRouter] = createPlannerRouter(
+  const [meRouter, calendarsRouter, tasksRouter] = createPlannerRouter(
     registry,
     API_BASE_PATH,
     plannerController,
@@ -66,6 +69,7 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   );
   router.use('/me', meRouter);
   router.use('/calendars', calendarsRouter);
+  router.use('/tasks', tasksRouter);
 
   return router;
 }

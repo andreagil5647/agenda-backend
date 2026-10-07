@@ -4,8 +4,12 @@ import type { PlannerService } from '../services/planner.service.js';
 import type {
   CalendarOrderRequest,
   CreateCalendarRequest,
+  CreateTaskRequest,
+  MoveTaskRequest,
   PatchCalendarRequest,
   PatchSettingsRequest,
+  PatchTaskRequest,
+  TasksQuery,
 } from '../schemas/planner.schemas.js';
 
 export class PlannerController {
@@ -71,5 +75,60 @@ export class PlannerController {
   ): Promise<void> => {
     const { userId } = requireAuth(req);
     res.json(await this.plannerService.reorderCalendars(userId, body));
+  };
+
+  listTasks = async (
+    { query }: { query: TasksQuery },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.json(await this.plannerService.listTasks(userId, query));
+  };
+
+  createTask = async (
+    { body }: { body: CreateTaskRequest },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.status(201).json(await this.plannerService.createTask(userId, body));
+  };
+
+  updateTask = async (
+    { params, body }: { params: { id: string }; body: PatchTaskRequest },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.json(await this.plannerService.updateTask(userId, params.id, body));
+  };
+
+  deleteTask = async (
+    { params }: { params: { id: string } },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    await this.plannerService.deleteTask(userId, params.id);
+    res.status(204).end();
+  };
+
+  restoreTask = async (
+    { params }: { params: { id: string } },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.status(201).json(await this.plannerService.restoreTask(userId, params.id));
+  };
+
+  moveTask = async (
+    { params, body }: { params: { id: string }; body: MoveTaskRequest },
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { userId } = requireAuth(req);
+    res.json(await this.plannerService.moveTask(userId, params.id, body));
   };
 }
