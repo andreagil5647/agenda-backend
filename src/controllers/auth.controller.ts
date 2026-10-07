@@ -47,7 +47,10 @@ function sessionBody(
 }
 
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly demoSessionFactory?: () => Promise<AuthSession>,
+  ) {}
 
   register = async (
     { body }: { body: RegisterRequest },
@@ -63,6 +66,16 @@ export class AuthController {
     const session = await this.authService.login(body);
     this.setSessionCookies(res, session);
     res.json(sessionBody(session, session.csrfToken));
+  };
+
+  demo = async (_input: unknown, _req: Request, res: Response): Promise<void> => {
+    if (!this.demoSessionFactory) {
+      throw new Error('Demo sessions are not configured');
+    }
+
+    const session = await this.demoSessionFactory();
+    this.setSessionCookies(res, session);
+    res.status(201).json(sessionBody(session, session.csrfToken));
   };
 
   logout = async (_input: unknown, req: Request, res: Response): Promise<void> => {

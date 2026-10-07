@@ -53,14 +53,17 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   const tasksRepository = new TasksRepository(db);
   const eventsRepository = new EventsRepository(db);
   const authService = new AuthService({ users: usersRepository, sessions: sessionsRepository });
-  const plannerService = new PlannerService({
-    users: usersRepository,
-    sessions: sessionsRepository,
-    calendars: calendarsRepository,
-    tasks: tasksRepository,
-    events: eventsRepository,
-  });
-  const authController = new AuthController(authService);
+  const plannerService = new PlannerService(
+    {
+      users: usersRepository,
+      sessions: sessionsRepository,
+      calendars: calendarsRepository,
+      tasks: tasksRepository,
+      events: eventsRepository,
+    },
+    authService,
+  );
+  const authController = new AuthController(authService, () => plannerService.createDemoSession());
   const plannerController = new PlannerController(plannerService);
   const authMiddleware = createAuthMiddleware(authService);
   router.use('/auth', createAuthRouter(registry, `${API_BASE_PATH}/auth`, authController));

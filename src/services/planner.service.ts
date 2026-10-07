@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { ObjectId } from 'mongodb';
 import { BadRequestError, NotFoundError } from '../errors/app-error.js';
 import {
@@ -22,6 +23,7 @@ import {
   type UsersRepository,
   type UserView,
 } from '../repositories/users.repository.js';
+import { hashPassword, type AuthService, type AuthSession } from './auth.service.js';
 import { parseObjectId } from '../repositories/base.repository.js';
 import type {
   CalendarOrderRequest,
@@ -46,7 +48,10 @@ export interface PlannerRepositories {
 }
 
 export class PlannerService {
-  constructor(private readonly repositories: PlannerRepositories) {}
+  constructor(
+    private readonly repositories: PlannerRepositories,
+    private readonly authService: AuthService,
+  ) {}
 
   getMe(userId: ObjectId): Promise<UserView> {
     return this.requireUser(userId);
@@ -168,6 +173,32 @@ export class PlannerService {
     return this.repositories.events.softDelete(userId, parseObjectId(id));
   }
 
+  async createDemoSession(now = new Date()): Promise<AuthSession> {
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const suffix = randomBytes(4).toString('hex');
+    const user = await this.repositories.users.create(
+      {
+        email: `demo-${suffix}@demo.agenda.local`,
+        passwordHash: await hashPassword(randomBytes(24).toString('base64url')),
+        displayName: 'Demo User',
+        settings: {
+          timeZone: 'Europe/Madrid',
+          weekStartsOn: 1,
+          hourCycle: 'h23',
+          locale: 'en',
+          theme: 'system',
+          accentColor: 'blue',
+        },
+        isDemo: true,
+        expiresAt,
+      },
+      now,
+    );
+
+    await seedDemoData(user._id, this.repositories, now);
+    return this.authService.createSessionForUser(user, now);
+  }
+
   private async requireUser(userId: ObjectId): Promise<UserView> {
     const user = await this.repositories.users.findActiveById(userId);
     if (!user) {
@@ -235,4 +266,55 @@ export class PlannerService {
     if (input.endDate !== undefined) update.endDate = input.endDate;
     return update;
   }
+}
+
+export async function seedDemoData(
+  userId: ObjectId,
+  repositories: Pick<PlannerRepositories, 'calendars' | 'tasks' | 'events'>,
+  now = new Date(),
+): Promise<void> {
+  const today = now.toISOString().slice(0, 10);
+  const work = await repositories.calendars.create(userId, {
+    name: 'Work',
+    colorKey: 'blue',
+    visible: true,
+    defaultReminderMinutes: [10],
+  });
+  const personal = await repositories.calendars.create(userId, {
+    name: 'Personal',
+    colorKey: 'green',
+    visible: true,
+    defaultReminderMinutes: [],
+  });
+  const task = await repositories.tasks.create(userId, {
+    title: 'Draft launch checklist',
+    dueDate: today,
+    priority: 'high',
+    status: 'todo',
+    estimateMinutes: 60,
+  });
+
+  await repositories.tasks.create(userId, {
+    title: 'Review calendar layout',
+    dueDate: today,
+    priority: 'medium',
+    status: 'todo',
+    estimateMinutes: 30,
+  });
+  await repositories.events.create(userId, {
+    kind: 'timed',
+    calendarId: work._id,
+    title: 'Focus block',
+    taskId: task._id,
+    startUtc: new Date(now.getTime() + 60 * 60 * 1000),
+    endUtc: new Date(now.getTime() + 2 * 60 * 60 * 1000),
+    timeZone: 'Europe/Madrid',
+  });
+  await repositories.events.create(userId, {
+    kind: 'allDay',
+    calendarId: personal._id,
+    title: 'Keep evening free',
+    startDate: today,
+    endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  });
 }

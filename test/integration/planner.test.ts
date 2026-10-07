@@ -184,4 +184,25 @@ describe('planner API', () => {
     const restoredTaskBody = restoredTask.body as TaskBody;
     expect(restoredTaskBody.title).toBe('Write integration test');
   });
+
+  it('creates a seeded demo account', async () => {
+    const demo = await request(app).post('/api/v1/auth/demo').set('Origin', origin).send();
+    const cookie = cookieHeader(demo);
+    const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const to = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    expect(demo.status).toBe(201);
+    const demoBody = demo.body as SessionBody;
+    expect(demoBody.user).toMatchObject({ displayName: 'Demo User', isDemo: true });
+
+    const [calendars, tasks, events] = await Promise.all([
+      request(app).get('/api/v1/calendars').set('Cookie', cookie),
+      request(app).get('/api/v1/tasks').set('Cookie', cookie),
+      request(app).get(`/api/v1/events?from=${from}&to=${to}`).set('Cookie', cookie),
+    ]);
+
+    expect((calendars.body as unknown[]).length).toBeGreaterThanOrEqual(2);
+    expect((tasks.body as unknown[]).length).toBeGreaterThanOrEqual(2);
+    expect((events.body as unknown[]).length).toBeGreaterThanOrEqual(1);
+  });
 });
