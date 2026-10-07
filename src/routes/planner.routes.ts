@@ -2,21 +2,33 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { RequestHandler, Router } from 'express';
 import type { PlannerController } from '../controllers/planner.controller.js';
 import { errorResponseSchema } from '../schemas/common.schemas.js';
-import { meResponseSchema, patchSettingsRequestSchema } from '../schemas/planner.schemas.js';
+import {
+  calendarOrderRequestSchema,
+  calendarSchema,
+  createCalendarRequestSchema,
+  meResponseSchema,
+  objectIdParamSchema,
+  patchCalendarRequestSchema,
+  patchSettingsRequestSchema,
+} from '../schemas/planner.schemas.js';
 import { createRouteBuilder, type RouteResponse } from '../openapi/define-route.js';
 
 const unauthorized: RouteResponse = {
   description: 'Authentication required',
   schema: errorResponseSchema,
 };
+const notFound: RouteResponse = { description: 'Resource not found', schema: errorResponseSchema };
 
 export function createPlannerRouter(
   registry: OpenAPIRegistry,
   basePath: string,
   controller: PlannerController,
   authMiddleware: RequestHandler,
-): [Router] {
-  return [createMeRouter(registry, `${basePath}/me`, controller, authMiddleware)];
+): [Router, Router] {
+  return [
+    createMeRouter(registry, `${basePath}/me`, controller, authMiddleware),
+    createCalendarsRouter(registry, `${basePath}/calendars`, controller, authMiddleware),
+  ];
 }
 
 function createMeRouter(
@@ -63,6 +75,78 @@ function createMeRouter(
     tags: ['Me'],
     responses: { 204: { description: 'Account deleted' }, 401: unauthorized },
     handler: controller.deleteAccount,
+  });
+
+  return router;
+}
+
+function createCalendarsRouter(
+  registry: OpenAPIRegistry,
+  mountPath: string,
+  controller: PlannerController,
+  authMiddleware: RequestHandler,
+) {
+  const { router, route } = createRouteBuilder(registry, mountPath);
+  router.use(authMiddleware);
+
+  route({
+    method: 'get',
+    path: '/',
+    operationId: 'listCalendars',
+    summary: 'List calendars',
+    tags: ['Calendars'],
+    responses: {
+      200: { description: 'Calendars', schema: calendarSchema.array() },
+      401: unauthorized,
+    },
+    handler: controller.listCalendars,
+  });
+
+  route({
+    method: 'post',
+    path: '/',
+    operationId: 'createCalendar',
+    summary: 'Create a calendar',
+    tags: ['Calendars'],
+    request: { body: createCalendarRequestSchema },
+    responses: {
+      201: { description: 'Created calendar', schema: calendarSchema },
+      401: unauthorized,
+    },
+    handler: controller.createCalendar,
+  });
+
+  route({
+    method: 'patch',
+    path: '/:id',
+    operationId: 'updateCalendar',
+    summary: 'Update a calendar',
+    tags: ['Calendars'],
+    request: { params: objectIdParamSchema, body: patchCalendarRequestSchema },
+    responses: { 200: { description: 'Updated calendar', schema: calendarSchema }, 404: notFound },
+    handler: controller.updateCalendar,
+  });
+
+  route({
+    method: 'delete',
+    path: '/:id',
+    operationId: 'deleteCalendar',
+    summary: 'Delete a calendar',
+    tags: ['Calendars'],
+    request: { params: objectIdParamSchema },
+    responses: { 204: { description: 'Deleted calendar' }, 404: notFound },
+    handler: controller.deleteCalendar,
+  });
+
+  route({
+    method: 'put',
+    path: '/order',
+    operationId: 'reorderCalendars',
+    summary: 'Reorder calendars',
+    tags: ['Calendars'],
+    request: { body: calendarOrderRequestSchema },
+    responses: { 200: { description: 'Reordered calendars', schema: calendarSchema.array() } },
+    handler: controller.reorderCalendars,
   });
 
   return router;

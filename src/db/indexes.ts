@@ -16,5 +16,9 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
       { key: { userId: 1 }, name: 'sessions_user_id' },
       { key: { expiresAt: 1 }, expireAfterSeconds: 0, name: 'sessions_expires_at_ttl' },
     ]),
+    db.collection('calendars').createIndexes([
+      { key: { userId: 1, order: 1 }, name: 'calendars_user_order' },
+      { key: { userId: 1, deletedAt: 1 }, name: 'calendars_user_deleted' },
+    ]),
   ]);
 }

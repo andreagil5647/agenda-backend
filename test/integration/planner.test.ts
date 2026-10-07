@@ -12,6 +12,13 @@ interface SessionBody {
   user: { displayName: string; isDemo: boolean };
 }
 
+interface CalendarBody {
+  id: string;
+  name: string;
+  colorKey: string;
+  visible: boolean;
+}
+
 interface SettingsBody {
   settings: { timeZone: string; theme: string };
 }
@@ -73,7 +80,7 @@ describe('planner API', () => {
     expect(res.body).toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
-  it('supports reading and updating settings for a signed-in user', async () => {
+  it('supports settings and calendars for a signed-in user', async () => {
     const auth = await register(app);
 
     const me = await request(app).get('/api/v1/me').set('Cookie', auth.cookie);
@@ -89,5 +96,22 @@ describe('planner API', () => {
     expect(settings.status).toBe(200);
     const settingsBody = settings.body as SettingsBody;
     expect(settingsBody.settings).toMatchObject({ timeZone: 'Europe/Madrid', theme: 'dark' });
+
+    const rejected = await request(app)
+      .post('/api/v1/calendars')
+      .set('Origin', origin)
+      .set('Cookie', auth.cookie)
+      .send({ name: 'No CSRF' });
+    expect(rejected.status).toBe(403);
+
+    const calendar = await request(app)
+      .post('/api/v1/calendars')
+      .set('Origin', origin)
+      .set('Cookie', auth.cookie)
+      .set('X-CSRF-Token', auth.csrfToken)
+      .send({ name: 'Work', colorKey: 'blue', defaultReminderMinutes: [10] });
+    expect(calendar.status).toBe(201);
+    const calendarBody = calendar.body as CalendarBody;
+    expect(calendarBody).toMatchObject({ name: 'Work', colorKey: 'blue', visible: true });
   });
 });
