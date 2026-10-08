@@ -12,13 +12,34 @@ as it lands, rather than building the whole API before any UI can use it.
 
 ## Status
 
+Done:
+
 - [x] Config, logging, error handling, health checks (`/api/v1/health`, `/health/ready`)
 - [x] Code-first OpenAPI 3.1 contract, committed and drift-checked in CI
 - [x] MongoDB connection, CI, Render blueprint
-- [x] Same-origin `/api/*` architecture verified locally (dev-server proxy) - see
+- [x] Same-origin `/api/*` architecture - see
       [ADR 0003](adr/0003-same-origin-api-through-render-rewrite.md)
-- [ ] Same architecture verified against the actual Render deployment
-- [ ] Everything below
+- [x] 1. Repository base pattern
+- [x] 2. Auth (register, login, logout, session, CSRF) - [ADR 0007](adr/0007-cookie-sessions-and-csrf.md)
+- [x] 3. Demo account (`POST /auth/demo`, seeded relative to now)
+- [x] 4. Me (settings, account deletion)
+- [x] 5. Calendars CRUD and ordering
+- [x] 6. Tasks CRUD, soft delete, restore, position - fractional keys with unit tests after
+      [debugging note 0003](debugging/0003-task-order-sorted-as-text.md)
+- [x] 7. Events, non-recurring (timed and all-day, task link, range query)
+
+Known gaps in the done items, to close before the next feature:
+
+- [ ] `If-Match` / `version` conflict checks are in the repository base but not yet enforced
+      on the HTTP routes ([ADR 0006](adr/0006-optimistic-concurrency-with-version-etags.md))
+- [ ] Demo-user cap and `scripts/seed-demo.ts` (item 3 asked for both)
+- [ ] Integration tests for calendar reorder, calendar/event deletion and account deletion
+- [ ] The planner service mixes use cases and demo seeding; move seeding to `src/domain` or
+      `src/services/demo-seed.ts`
+
+Remaining, in order: items 8-13 below. The "frontend first" order still holds: the web app
+needs a time grid with drag-and-drop (task onto grid creates a linked event) before the
+recurrence work pays off visibly, so item 8 starts once that lands.
 
 ## Domain model (recap)
 

@@ -8,5 +8,6 @@ are recorded here.
 | ---- | ----------------------------------------------------------------------------------------------------------------- | ------- |
 | 0001 | [Lockfile dropped native bindings, Vitest could not start](0001-lockfile-dropped-native-bindings.md)              | Tooling |
 | 0002 | [Invalid CORS origin crashed config loading instead of failing validation](0002-zod-refine-after-failed-check.md) | Config  |
+| 0003 | [The tenth task sorted before the second](0003-task-order-sorted-as-text.md)                                      | Tasks   |
 
 New notes copy [the template](template.md).
