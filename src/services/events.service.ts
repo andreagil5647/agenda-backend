@@ -1,4 +1,5 @@
 import type { ObjectId } from 'mongodb';
+import { localDateSpan } from '../domain/time/local-date.js';
 import { BadRequestError, NotFoundError } from '../errors/app-error.js';
 import { toEventView, type EventView } from '../mappers/event.mapper.js';
 import { parseObjectId } from '../repositories/base.repository.js';
@@ -63,7 +64,7 @@ function toUpdateEventInput(input: PatchEventRequest): UpdateEventInput {
 export class EventsService {
   constructor(private readonly repositories: EventsRepositories) {}
 
-  async listInRange(userId: ObjectId, query: EventsQuery): Promise<EventView[]> {
+  async listInRange(userId: ObjectId, query: EventsQuery, timeZone: string): Promise<EventView[]> {
     const from = new Date(query.from);
     const to = new Date(query.to);
     if (to <= from) {
@@ -73,6 +74,7 @@ export class EventsService {
     const events = await this.repositories.events.listByRange(userId, {
       from,
       to,
+      dates: localDateSpan(from, to, timeZone),
       calendarIds: query.calendarIds?.map((id) => parseObjectId(id, 'calendarIds')),
     });
     return events.map(toEventView);

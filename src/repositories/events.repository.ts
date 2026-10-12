@@ -1,4 +1,5 @@
 import { ObjectId, type Collection, type Db, type Filter, type MatchKeysAndValues } from 'mongodb';
+import type { LocalDateSpan } from '../domain/time/local-date.js';
 import { NotFoundError } from '../errors/app-error.js';
 import {
   byUserAndIdFilter,
@@ -48,6 +49,8 @@ export type UpdateEventInput = Partial<Omit<EventDocument, keyof UserOwnedReposi
 export interface EventRange {
   from: Date;
   to: Date;
+  /** The calendar dates the instant range covers for the user; all-day events have no zone. */
+  dates: LocalDateSpan;
   calendarIds?: ObjectId[];
 }
 
@@ -59,12 +62,14 @@ export class EventsRepository {
   }
 
   async listByRange(userId: ObjectId, range: EventRange): Promise<EventDocument[]> {
-    const fromDate = range.from.toISOString().slice(0, 10);
-    const toDate = range.to.toISOString().slice(0, 10);
     const filter: Filter<EventDocument> = {
       $or: [
         { kind: 'timed', startUtc: { $lt: range.to }, endUtc: { $gt: range.from } },
-        { kind: 'allDay', startDate: { $lt: toDate }, endDate: { $gt: fromDate } },
+        {
+          kind: 'allDay',
+          startDate: { $lte: range.dates.last },
+          endDate: { $gt: range.dates.first },
+        },
       ],
     };
 
