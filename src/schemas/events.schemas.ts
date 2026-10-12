@@ -1,9 +1,13 @@
 import { z } from 'zod';
-import { isoDateSchema, isoDateTimeSchema, objectIdSchema } from './common.schemas.js';
+import {
+  isoDateSchema,
+  isoDateTimeSchema,
+  objectIdSchema,
+  timeZoneSchema,
+} from './common.schemas.js';
 
 const titleSchema = z.string().trim().min(1).max(160);
 const notesSchema = z.string().trim().max(2_000);
-const timeZoneSchema = z.string().trim().min(1).max(80);
 
 export const eventSchema = z
   .object({

@@ -77,6 +77,24 @@ describe('GET /events range', () => {
     expect(titles).toEqual([]);
   });
 
+  it('rejects a time zone that does not exist, in settings and on an event', async () => {
+    const settings = await madrid.patch('/me/settings').send({ timeZone: 'Mars/Olympus_Mons' });
+    const calendars = await madrid.get('/calendars');
+    const [calendar] = calendars.body as { id: string }[];
+    const event = await madrid.post('/events').send({
+      kind: 'timed',
+      calendarId: calendar?.id,
+      title: 'Nowhere',
+      startUtc: '2026-10-12T09:00:00.000Z',
+      endUtc: '2026-10-12T10:00:00.000Z',
+      timeZone: 'Not/AZone',
+    });
+
+    expect(settings.status).toBe(422);
+    expect(event.status).toBe(422);
+    expect(event.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
   it('rejects a range that ends before it starts', async () => {
     const res = await madrid.get(
       '/events?from=2026-10-12T22:00:00.000Z&to=2026-10-11T22:00:00.000Z',
