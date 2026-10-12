@@ -25,19 +25,23 @@ import {
 } from '../repositories/users.repository.js';
 import { hashPassword, type AuthService, type AuthSession } from './auth.service.js';
 import { parseObjectId } from '../repositories/base.repository.js';
+import type { PatchSettingsRequest } from '../schemas/me.schemas.js';
 import type {
   CalendarOrderRequest,
   CreateCalendarRequest,
-  CreateEventRequest,
-  CreateTaskRequest,
-  EventsQuery,
-  MoveTaskRequest,
   PatchCalendarRequest,
-  PatchEventRequest,
-  PatchSettingsRequest,
+} from '../schemas/calendars.schemas.js';
+import type {
+  CreateTaskRequest,
+  MoveTaskRequest,
   PatchTaskRequest,
   TasksQuery,
-} from '../schemas/planner.schemas.js';
+} from '../schemas/tasks.schemas.js';
+import type {
+  CreateEventRequest,
+  EventsQuery,
+  PatchEventRequest,
+} from '../schemas/events.schemas.js';
 
 export interface PlannerRepositories {
   users: UsersRepository;

@@ -11,3 +11,9 @@ export const errorResponseSchema = z
   .meta({ id: 'ErrorResponse' });
 
 export type ErrorResponseBody = z.infer<typeof errorResponseSchema>;
+
+export const objectIdSchema = z.string().regex(/^[0-9a-f]{24}$/i);
+export const objectIdParamSchema = z.object({ id: objectIdSchema });
+
+export const isoDateSchema = z.iso.date();
+export const isoDateTimeSchema = z.iso.datetime();

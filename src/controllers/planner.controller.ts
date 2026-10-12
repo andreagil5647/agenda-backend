@@ -1,19 +1,23 @@
 import type { Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import type { PlannerService } from '../services/planner.service.js';
+import type { PatchSettingsRequest } from '../schemas/me.schemas.js';
 import type {
   CalendarOrderRequest,
   CreateCalendarRequest,
-  CreateEventRequest,
-  CreateTaskRequest,
-  EventsQuery,
-  MoveTaskRequest,
   PatchCalendarRequest,
-  PatchEventRequest,
-  PatchSettingsRequest,
+} from '../schemas/calendars.schemas.js';
+import type {
+  CreateTaskRequest,
+  MoveTaskRequest,
   PatchTaskRequest,
   TasksQuery,
-} from '../schemas/planner.schemas.js';
+} from '../schemas/tasks.schemas.js';
+import type {
+  CreateEventRequest,
+  EventsQuery,
+  PatchEventRequest,
+} from '../schemas/events.schemas.js';
 
 export class PlannerController {
   constructor(private readonly plannerService: PlannerService) {}

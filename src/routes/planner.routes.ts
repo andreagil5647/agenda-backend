@@ -2,24 +2,27 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { RequestHandler, Router } from 'express';
 import type { PlannerController } from '../controllers/planner.controller.js';
 import { errorResponseSchema } from '../schemas/common.schemas.js';
+import { meResponseSchema, patchSettingsRequestSchema } from '../schemas/me.schemas.js';
 import {
   calendarOrderRequestSchema,
   calendarSchema,
   createCalendarRequestSchema,
-  createEventRequestSchema,
-  createTaskRequestSchema,
-  eventSchema,
-  eventsQuerySchema,
-  meResponseSchema,
-  moveTaskRequestSchema,
-  objectIdParamSchema,
   patchCalendarRequestSchema,
-  patchEventRequestSchema,
-  patchSettingsRequestSchema,
+} from '../schemas/calendars.schemas.js';
+import {
+  createTaskRequestSchema,
+  moveTaskRequestSchema,
   patchTaskRequestSchema,
   taskSchema,
   tasksQuerySchema,
-} from '../schemas/planner.schemas.js';
+} from '../schemas/tasks.schemas.js';
+import {
+  createEventRequestSchema,
+  eventSchema,
+  eventsQuerySchema,
+  patchEventRequestSchema,
+} from '../schemas/events.schemas.js';
+import { objectIdParamSchema } from '../schemas/common.schemas.js';
 import { createRouteBuilder, type RouteResponse } from '../openapi/define-route.js';
 
 const unauthorized: RouteResponse = {
