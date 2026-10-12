@@ -30,8 +30,12 @@ Done:
 
 Known gaps in the done items, to close before the next feature:
 
-- [ ] `If-Match` / `version` conflict checks are in the repository base but not yet enforced
-      on the HTTP routes ([ADR 0006](adr/0006-optimistic-concurrency-with-version-etags.md))
+- [x] `If-Match` is required on updates, deletes and task moves: `412` on a stale version,
+      `428` when missing ([ADR 0006](adr/0006-optimistic-concurrency-with-version-etags.md))
+- [x] `PATCH /events/:id` validates the merged event: end after start, fields matching the
+      event kind
+- [x] All-day events are matched against the account's local dates
+      ([debugging note 0004](debugging/0004-all-day-event-on-the-wrong-day.md))
 - [ ] Demo-user cap and `scripts/seed-demo.ts` (item 3 asked for both)
 - [ ] Integration tests for calendar reorder, calendar/event deletion and account deletion
 - [x] One slice per resource (`me`, `calendars`, `tasks`, `events`, `demo`): routes,
