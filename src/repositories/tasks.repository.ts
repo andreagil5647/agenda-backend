@@ -1,4 +1,5 @@
 import { ObjectId, type Collection, type Db, type Filter, type MatchKeysAndValues } from 'mongodb';
+import { keyBetween } from '../domain/task-order/fractional-index.js';
 import { NotFoundError } from '../errors/app-error.js';
 import {
   byUserAndIdFilter,
@@ -66,12 +67,6 @@ export function toTaskView(task: TaskDocument): TaskView {
   };
 }
 
-function midpoint(before: string | null, after: string | null): string {
-  const beforeValue = before ? Number(before) : 0;
-  const afterValue = after ? Number(after) : beforeValue + 2;
-  return ((beforeValue + afterValue) / 2).toFixed(6);
-}
-
 export class TasksRepository {
   private readonly tasks: Collection<TaskDocument>;
 
@@ -96,7 +91,7 @@ export class TasksRepository {
       .sort({ order: -1 })
       .limit(1)
       .next();
-    const nextOrder = latest ? midpoint(latest.order, null) : '1.000000';
+    const nextOrder = keyBetween(latest?.order ?? null, null);
     const task: TaskDocument = {
       _id: new ObjectId(),
       userId,
@@ -150,7 +145,7 @@ export class TasksRepository {
     return this.update(
       userId,
       id,
-      { order: midpoint(after?.order ?? null, before?.order ?? null) },
+      { order: keyBetween(after?.order ?? null, before?.order ?? null) },
       now,
     );
   }
