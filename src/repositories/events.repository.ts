@@ -6,7 +6,9 @@ import {
   byUserFilter,
   createRepositoryMetadata,
   softDeleteUpdate,
+  versionConflictError,
   versionedUpdate,
+  withExpectedVersion,
   type UserOwnedRepositoryDocument,
 } from './base.repository.js';
 
@@ -108,20 +110,31 @@ export class EventsRepository {
     return event;
   }
 
+  async findByUserAndId(userId: ObjectId, id: ObjectId): Promise<EventDocument | null> {
+    return this.events.findOne(byUserAndIdFilter<EventDocument>(userId, id));
+  }
+
+  /**
+   * Applies the change only if the event is still at `expectedVersion`, so a
+   * change checked against one state of the event cannot land on another.
+   */
   async update(
     userId: ObjectId,
     id: ObjectId,
     input: UpdateEventInput,
+    expectedVersion: number,
     now = new Date(),
   ): Promise<EventDocument> {
     const result = await this.events.findOneAndUpdate(
-      byUserAndIdFilter<EventDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<EventDocument>(userId, id), expectedVersion),
       versionedUpdate<EventDocument>(input as MatchKeysAndValues<EventDocument>, now),
       { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new NotFoundError('Event');
+      throw (await this.findByUserAndId(userId, id))
+        ? versionConflictError('Event')
+        : new NotFoundError('Event');
     }
 
     return result;
