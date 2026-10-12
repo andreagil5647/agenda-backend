@@ -2,7 +2,7 @@ import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import type { Router } from 'express';
 import type { DemoController } from '../controllers/demo.controller.js';
 import { createRouteBuilder } from '../openapi/define-route.js';
-import { authenticatedSessionSchema } from '../schemas/auth.schemas.js';
+import { authenticatedSessionSchema, demoRequestSchema } from '../schemas/auth.schemas.js';
 
 export function createDemoRouter(
   registry: OpenAPIRegistry,
@@ -17,6 +17,7 @@ export function createDemoRouter(
     operationId: 'createDemoSession',
     summary: 'Start a seeded demo session',
     tags: ['Auth'],
+    request: { body: demoRequestSchema },
     responses: {
       201: { description: 'Demo user created and signed in', schema: authenticatedSessionSchema },
     },

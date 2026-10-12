@@ -218,6 +218,18 @@
           "accentColor"
         ]
       },
+      "DemoRequest": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "IANA zone the demo day is laid out in. Defaults to UTC"
+          }
+        },
+        "default": {}
+      },
       "RegisterRequest": {
         "type": "object",
         "properties": {
@@ -236,6 +248,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          },
+          "timeZone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "IANA zone the account starts in, usually the browser zone. Defaults to UTC"
           }
         },
         "required": [
@@ -999,6 +1017,16 @@
         "tags": [
           "Auth"
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Demo user created and signed in",
@@ -1006,6 +1034,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthenticatedSession"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

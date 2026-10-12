@@ -64,9 +64,9 @@ function hashesMatch(left: string, right: string): boolean {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-export function defaultUserSettings(): UserSettings {
+export function defaultUserSettings(timeZone = 'UTC'): UserSettings {
   return {
-    timeZone: 'UTC',
+    timeZone,
     weekStartsOn: 1,
     hourCycle: 'h23',
     locale: 'en',
@@ -92,7 +92,7 @@ export class AuthService {
         email: normalizeEmail(input.email),
         passwordHash: await hashPassword(input.password),
         displayName: input.displayName.trim(),
-        settings: defaultUserSettings(),
+        settings: defaultUserSettings(input.timeZone),
       },
       now,
     );
