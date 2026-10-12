@@ -1048,6 +1048,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many demo sign-ins from this address, or the demo is full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error",
             "content": {

@@ -66,7 +66,17 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   const events = new EventsRepository(db);
 
   const authService = new AuthService({ users, sessions });
-  const demoService = new DemoService({ users, calendars, tasks, events }, authService);
+  const demoService = new DemoService(
+    { users, calendars, tasks, events },
+    authService,
+    config.demo.maxActiveUsers,
+  );
+  // Each demo sign-in hashes a password and writes a seeded day, so it gets a
+  // much lower ceiling than ordinary requests.
+  const demoRateLimiter = createRateLimiter({
+    windowMs: config.http.rateLimit.windowMs,
+    max: config.demo.rateLimitMax,
+  });
   const authMiddleware = createAuthMiddleware(authService);
 
   const authController = new AuthController(authService);
@@ -79,7 +89,11 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   const eventsController = new EventsController(new EventsService({ events, calendars }));
 
   const mount = (path: string): string => `${API_BASE_PATH}${path}`;
-  router.use('/auth/demo', createDemoRouter(registry, mount('/auth/demo'), demoController));
+  router.use(
+    '/auth/demo',
+    demoRateLimiter,
+    createDemoRouter(registry, mount('/auth/demo'), demoController),
+  );
   router.use('/auth', createAuthRouter(registry, mount('/auth'), authController));
   router.use('/me', createMeRouter(registry, mount('/me'), meController, authMiddleware));
   router.use(

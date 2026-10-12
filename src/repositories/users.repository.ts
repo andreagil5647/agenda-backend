@@ -93,6 +93,10 @@ export class UsersRepository {
     return this.users.findOne({ _id: id, ...activeUserFilter(now) });
   }
 
+  async countActiveDemoUsers(now = new Date()): Promise<number> {
+    return this.users.countDocuments({ isDemo: true, ...activeUserFilter(now) });
+  }
+
   async updateSettings(
     id: ObjectId,
     settings: Partial<UserSettings>,

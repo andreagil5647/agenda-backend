@@ -7,6 +7,7 @@ import {
   DEMO_TASKS,
 } from '../domain/demo/demo-day.js';
 import { localDateOf } from '../domain/time/local-date.js';
+import { RateLimitedError } from '../errors/app-error.js';
 import { addDays, instantAt } from '../domain/time/zoned-time.js';
 import type { CalendarsRepository } from '../repositories/calendars.repository.js';
 import type { EventsRepository } from '../repositories/events.repository.js';
@@ -32,9 +33,16 @@ export class DemoService {
   constructor(
     private readonly repositories: DemoRepositories,
     private readonly authService: AuthService,
+    private readonly maxActiveUsers: number,
   ) {}
 
   async createDemoSession(timeZone = 'UTC', now = new Date()): Promise<AuthSession> {
+    // A soft cap: two sign-ins racing past the count can overshoot it by one,
+    // which is fine for a limit that only exists to bound storage.
+    if ((await this.repositories.users.countActiveDemoUsers(now)) >= this.maxActiveUsers) {
+      throw new RateLimitedError('The demo is full right now, please try again in a few minutes');
+    }
+
     const user = await this.repositories.users.create(
       {
         email: `demo-${randomBytes(4).toString('hex')}@demo.agenda.local`,

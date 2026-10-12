@@ -36,6 +36,7 @@ function startDemo(app: Express, body?: object): request.Test {
 describe('POST /auth/demo', () => {
   let database: TestDatabase;
   let app: Express;
+  const extraDatabases: TestDatabase[] = [];
 
   beforeAll(async () => {
     database = await createTestDatabase();
@@ -43,8 +44,15 @@ describe('POST /auth/demo', () => {
   });
 
   afterAll(async () => {
-    await database.dispose();
+    await Promise.all([database, ...extraDatabases].map((each) => each.dispose()));
   });
+
+  /** A database of its own, for apps whose limits must not see other tests' demo accounts. */
+  async function isolatedDatabase(): Promise<TestDatabase> {
+    const isolated = await createTestDatabase();
+    extraDatabases.push(isolated);
+    return isolated;
+  }
 
   it("starts the demo account in the visitor's time zone", async () => {
     const res = await startDemo(app, { timeZone: 'America/New_York' });
@@ -95,6 +103,42 @@ describe('POST /auth/demo', () => {
     const res = await startDemo(app, { timeZone: 'Atlantis/Central' });
 
     expect(res.status).toBe(422);
+  });
+
+  it('refuses new demo accounts once the cap is reached, without touching existing ones', async () => {
+    const capped = createApp({
+      config: createTestConfig({ DEMO_MAX_ACTIVE_USERS: '1' }),
+      logger: silentLogger,
+      db: (await isolatedDatabase()).db,
+    }).app;
+
+    const first = await startDemo(capped);
+    const second = await startDemo(capped);
+    const firstStillWorks = await request(capped)
+      .get('/api/v1/tasks')
+      .set('Cookie', cookieHeader(first));
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(429);
+    expect(second.body).toMatchObject({ code: 'RATE_LIMITED' });
+    expect(firstStillWorks.status).toBe(200);
+  });
+
+  it('limits demo sign-ins per address more tightly than other requests', async () => {
+    const limited = createApp({
+      config: createTestConfig({ DEMO_RATE_LIMIT_MAX: '2' }),
+      logger: silentLogger,
+      db: (await isolatedDatabase()).db,
+    }).app;
+
+    const statuses = [];
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      statuses.push((await startDemo(limited)).status);
+    }
+    const otherRoute = await request(limited).get('/api/v1/auth/session');
+
+    expect(statuses).toEqual([201, 201, 429]);
+    expect(otherRoute.status).toBe(200);
   });
 
   it('starts a registered account in the time zone sent at sign-up', async () => {
