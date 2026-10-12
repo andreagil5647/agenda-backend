@@ -54,7 +54,7 @@ export class TasksRepository {
 
     return this.tasks
       .find(byUserFilter<TaskDocument>(userId, filter))
-      .sort({ status: 1, order: 1, createdAt: 1 })
+      .sort({ order: 1, createdAt: 1 })
       .toArray();
   }
 
