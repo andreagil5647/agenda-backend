@@ -15,16 +15,26 @@ export const calendarSchema = z
   })
   .meta({ id: 'Calendar' });
 
+// The fields a client can set, without defaults. A default belongs to creation
+// only: on an update an absent field means "leave it alone", and zod would
+// fill a defaulted field in, overwriting the stored value.
+const calendarFields = {
+  name: z.string().trim().min(1).max(80),
+  colorKey: z.string().trim().min(1).max(32),
+  visible: z.boolean(),
+  defaultReminderMinutes: z.array(z.number().int().min(0).max(10_080)),
+};
+
 export const createCalendarRequestSchema = z
   .object({
-    name: z.string().trim().min(1).max(80),
-    colorKey: z.string().trim().min(1).max(32).default('blue'),
-    visible: z.boolean().default(true),
-    defaultReminderMinutes: z.array(z.number().int().min(0).max(10_080)).default([]),
+    name: calendarFields.name,
+    colorKey: calendarFields.colorKey.default('blue'),
+    visible: calendarFields.visible.default(true),
+    defaultReminderMinutes: calendarFields.defaultReminderMinutes.default([]),
   })
   .meta({ id: 'CreateCalendarRequest' });
 
-export const patchCalendarRequestSchema = createCalendarRequestSchema.partial().meta({
+export const patchCalendarRequestSchema = z.object(calendarFields).partial().meta({
   id: 'PatchCalendarRequest',
 });
 

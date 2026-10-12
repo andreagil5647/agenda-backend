@@ -24,22 +24,32 @@ export const tasksQuerySchema = z.object({
   due: isoDateSchema.optional(),
 });
 
+// The fields a client can set, without defaults. A default belongs to creation
+// only: on an update an absent field means "leave it alone", and zod would
+// fill a defaulted field in, overwriting the stored value.
+const taskFields = {
+  title: z.string().trim().min(1).max(160),
+  dueDate: isoDateSchema.nullable(),
+  priority: taskPrioritySchema,
+  status: taskStatusSchema,
+  estimateMinutes: z
+    .number()
+    .int()
+    .min(5)
+    .max(24 * 60),
+};
+
 export const createTaskRequestSchema = z
   .object({
-    title: z.string().trim().min(1).max(160),
-    dueDate: isoDateSchema.nullish(),
-    priority: taskPrioritySchema.default('none'),
-    status: taskStatusSchema.default('todo'),
-    estimateMinutes: z
-      .number()
-      .int()
-      .min(5)
-      .max(24 * 60)
-      .default(30),
+    title: taskFields.title,
+    dueDate: taskFields.dueDate.optional(),
+    priority: taskFields.priority.default('none'),
+    status: taskFields.status.default('todo'),
+    estimateMinutes: taskFields.estimateMinutes.default(30),
   })
   .meta({ id: 'CreateTaskRequest' });
 
-export const patchTaskRequestSchema = createTaskRequestSchema.partial().meta({
+export const patchTaskRequestSchema = z.object(taskFields).partial().meta({
   id: 'PatchTaskRequest',
 });
 
