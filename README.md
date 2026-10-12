@@ -7,9 +7,10 @@ events live on the same timeline, and you plan a day by dragging tasks into time
 
 The web app lives in [andreagil5647/agenda](https://github.com/andreagil5647/agenda).
 
-> **Status:** foundation. Configuration, logging, error handling, health checks, the OpenAPI
-> contract, CI and deployment are in place. Authentication and the demo account, calendars,
-> events with recurrence, tasks and reminders come next.
+> **Status:** core API. Sign-up and cookie sessions, a seeded demo account, user settings,
+> calendars, tasks with manual ordering, and one-off timed and all-day events are in place
+> and covered by integration tests. Recurring events, reminders and push notifications come
+> next - see the [roadmap](docs/ROADMAP.md).
 
 ## Stack
 
@@ -41,6 +42,8 @@ flowchart LR
 - **controllers** translate HTTP into service calls and choose status codes.
 - **services** hold the business rules and know nothing about HTTP.
 - **repositories** are the only layer that talks to MongoDB.
+- **domain** holds pure logic (for example the task ordering keys) with no Express or
+  MongoDB imports, so it can be unit-tested on its own.
 
 Every error response has the same shape, and clients branch on `code`:
 
@@ -56,11 +59,14 @@ src/
   routes/           endpoint declarations, one file per resource
   controllers/      HTTP adapters
   services/         business logic
+  repositories/     MongoDB queries, one file per collection
+  domain/           framework-free logic with unit tests
   schemas/          zod schemas shared by validation and docs
-  middleware/       error handling, request logging, rate limiting
+  middleware/       sessions and CSRF, error handling, request logging, rate limiting
+  http/             cookie names and parsing
   openapi/          route builder and document generation
   errors/           AppError and its subclasses
-  db/               MongoDB connection
+  db/               MongoDB connection and indexes
 test/
   integration/      HTTP tests against a real mongod
   helpers/ setup/   test config, per-file databases, global mongod
@@ -134,6 +140,7 @@ without printing its value.
 
 ## Documentation
 
+- [Roadmap](docs/ROADMAP.md): domain model, target API surface and build order.
 - [Architecture decision records](docs/adr/README.md)
 - [Debugging notes](docs/debugging/README.md): bugs found during development, with the
   investigation and the regression test that now guards each one.
