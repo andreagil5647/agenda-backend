@@ -1,5 +1,5 @@
 import type request from 'supertest';
-import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../../src/controllers/auth.controller.js';
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../../src/http/cookies.js';
 
 function getSetCookies(res: request.Response): string[] {
   const header = res.headers['set-cookie'];

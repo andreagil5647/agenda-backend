@@ -1,11 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import {
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-  SESSION_COOKIE_NAME,
-} from '../../src/controllers/auth.controller.js';
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME } from '../../src/http/cookies.js';
 import { hashSessionToken } from '../../src/services/auth.service.js';
 import { createTestConfig, silentLogger } from '../helpers/test-config.js';
 import { createTestDatabase, type TestDatabase } from '../helpers/test-database.js';

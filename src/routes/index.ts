@@ -5,6 +5,7 @@ import type { Logger } from 'pino';
 import type { Config } from '../config/env.js';
 import { AuthController } from '../controllers/auth.controller.js';
 import { CalendarsController } from '../controllers/calendars.controller.js';
+import { DemoController } from '../controllers/demo.controller.js';
 import { EventsController } from '../controllers/events.controller.js';
 import { HealthController } from '../controllers/health.controller.js';
 import { MeController } from '../controllers/me.controller.js';
@@ -26,6 +27,7 @@ import { MeService } from '../services/me.service.js';
 import { TasksService } from '../services/tasks.service.js';
 import { createAuthRouter } from './auth.routes.js';
 import { createCalendarsRouter } from './calendars.routes.js';
+import { createDemoRouter } from './demo.routes.js';
 import { createEventsRouter } from './events.routes.js';
 import { createHealthRouter } from './health.routes.js';
 import { createMeRouter } from './me.routes.js';
@@ -67,7 +69,8 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   const demoService = new DemoService({ users, calendars, tasks, events }, authService);
   const authMiddleware = createAuthMiddleware(authService);
 
-  const authController = new AuthController(authService, () => demoService.createDemoSession());
+  const authController = new AuthController(authService);
+  const demoController = new DemoController(demoService);
   const meController = new MeController(
     new MeService({ users, sessions, calendars, tasks, events }),
   );
@@ -76,6 +79,7 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   const eventsController = new EventsController(new EventsService({ events, calendars }));
 
   const mount = (path: string): string => `${API_BASE_PATH}${path}`;
+  router.use('/auth/demo', createDemoRouter(registry, mount('/auth/demo'), demoController));
   router.use('/auth', createAuthRouter(registry, mount('/auth'), authController));
   router.use('/me', createMeRouter(registry, mount('/me'), meController, authMiddleware));
   router.use(
