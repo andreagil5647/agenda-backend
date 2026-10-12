@@ -49,4 +49,8 @@ export class SessionsRepository {
   async deleteByTokenHash(tokenHash: string): Promise<void> {
     await this.sessions.deleteOne({ tokenHash });
   }
+
+  async deleteManyByUser(userId: ObjectId): Promise<void> {
+    await this.sessions.deleteMany({ userId });
+  }
 }

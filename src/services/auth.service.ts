@@ -80,6 +80,10 @@ export function hashSessionToken(sessionToken: string): string {
   return hashOpaqueToken(sessionToken);
 }
 
+export function hashPassword(password: string): Promise<string> {
+  return argon2.hash(password, PASSWORD_HASH_OPTIONS);
+}
+
 export class AuthService {
   constructor(private readonly repositories: AuthRepositories) {}
 
@@ -87,14 +91,14 @@ export class AuthService {
     const user = await this.repositories.users.create(
       {
         email: normalizeEmail(input.email),
-        passwordHash: await argon2.hash(input.password, PASSWORD_HASH_OPTIONS),
+        passwordHash: await hashPassword(input.password),
         displayName: input.displayName.trim(),
         settings: defaultUserSettings(),
       },
       now,
     );
 
-    return this.createSession(user, now);
+    return this.createSessionForUser(user, now);
   }
 
   async login(input: LoginRequest, now = new Date()): Promise<AuthSession> {
@@ -104,7 +108,7 @@ export class AuthService {
       throw new UnauthorizedError('Invalid email or password');
     }
 
-    return this.createSession(user, now);
+    return this.createSessionForUser(user, now);
   }
 
   async getCurrentSession(
@@ -158,7 +162,7 @@ export class AuthService {
     }
   }
 
-  private async createSession(user: UserDocument, now: Date): Promise<AuthSession> {
+  async createSessionForUser(user: UserDocument, now = new Date()): Promise<AuthSession> {
     const sessionToken = generateOpaqueToken(SESSION_TOKEN_BYTES);
     const csrfToken = generateOpaqueToken(CSRF_TOKEN_BYTES);
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);

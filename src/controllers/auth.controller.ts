@@ -1,4 +1,10 @@
 import type { CookieOptions, Request, Response } from 'express';
+import {
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+  parseCookies,
+  SESSION_COOKIE_NAME,
+} from '../http/cookies.js';
 import type { AuthService, AuthSession, CurrentSession } from '../services/auth.service.js';
 import type {
   AuthenticatedSessionResponse,
@@ -7,24 +13,7 @@ import type {
   SessionResponse,
 } from '../schemas/auth.schemas.js';
 
-export const SESSION_COOKIE_NAME = 'agenda_session';
-export const CSRF_COOKIE_NAME = 'agenda_csrf';
-export const CSRF_HEADER_NAME = 'x-csrf-token';
-
-function parseCookies(headerValue: string | undefined): Map<string, string> {
-  const cookies = new Map<string, string>();
-
-  for (const part of headerValue?.split(';') ?? []) {
-    const [name, ...valueParts] = part.trim().split('=');
-    if (!name || valueParts.length === 0) {
-      continue;
-    }
-
-    cookies.set(name, decodeURIComponent(valueParts.join('=')));
-  }
-
-  return cookies;
-}
+export { CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SESSION_COOKIE_NAME } from '../http/cookies.js';
 
 function authCookieOptions(expiresAt?: Date): CookieOptions {
   return {
@@ -58,7 +47,10 @@ function sessionBody(
 }
 
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly demoSessionFactory?: () => Promise<AuthSession>,
+  ) {}
 
   register = async (
     { body }: { body: RegisterRequest },
@@ -74,6 +66,16 @@ export class AuthController {
     const session = await this.authService.login(body);
     this.setSessionCookies(res, session);
     res.json(sessionBody(session, session.csrfToken));
+  };
+
+  demo = async (_input: unknown, _req: Request, res: Response): Promise<void> => {
+    if (!this.demoSessionFactory) {
+      throw new Error('Demo sessions are not configured');
+    }
+
+    const session = await this.demoSessionFactory();
+    this.setSessionCookies(res, session);
+    res.status(201).json(sessionBody(session, session.csrfToken));
   };
 
   logout = async (_input: unknown, req: Request, res: Response): Promise<void> => {
