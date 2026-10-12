@@ -1,5 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import type { ObjectId } from 'mongodb';
+import {
+  DEMO_ALL_DAY_EVENTS,
+  DEMO_BLOCKS,
+  DEMO_CALENDARS,
+  DEMO_TASKS,
+} from '../domain/demo/demo-day.js';
+import { localDateOf } from '../domain/time/local-date.js';
+import { addDays, instantAt } from '../domain/time/zoned-time.js';
 import type { CalendarsRepository } from '../repositories/calendars.repository.js';
 import type { EventsRepository } from '../repositories/events.repository.js';
 import type { TasksRepository } from '../repositories/tasks.repository.js';
@@ -11,18 +19,13 @@ import {
   type AuthSession,
 } from './auth.service.js';
 
-const HOUR_MS = 60 * 60 * 1000;
-const DEMO_ACCOUNT_TTL_MS = 24 * HOUR_MS;
+const DEMO_ACCOUNT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface DemoRepositories {
   users: UsersRepository;
   calendars: CalendarsRepository;
   tasks: TasksRepository;
   events: EventsRepository;
-}
-
-function toIsoDate(instant: Date): string {
-  return instant.toISOString().slice(0, 10);
 }
 
 export class DemoService {
@@ -44,55 +47,69 @@ export class DemoService {
       now,
     );
 
-    await this.seedPlanner(user._id, timeZone, now);
+    await this.seedDemoDay(user._id, timeZone, now);
     return this.authService.createSessionForUser(user, now);
   }
 
-  private async seedPlanner(userId: ObjectId, timeZone: string, now: Date): Promise<void> {
+  /**
+   * Lays the demo day out around today's date in `timeZone`. Calendars and
+   * tasks are created one at a time because each takes the next position in
+   * its list from the ones already stored.
+   */
+  private async seedDemoDay(userId: ObjectId, timeZone: string, now: Date): Promise<void> {
     const { calendars, tasks, events } = this.repositories;
-    const today = toIsoDate(now);
+    const today = localDateOf(now, timeZone);
 
-    const work = await calendars.create(userId, {
-      name: 'Work',
-      colorKey: 'blue',
-      visible: true,
-      defaultReminderMinutes: [10],
-    });
-    const personal = await calendars.create(userId, {
-      name: 'Personal',
-      colorKey: 'green',
-      visible: true,
-      defaultReminderMinutes: [],
-    });
-    const checklist = await tasks.create(userId, {
-      title: 'Draft launch checklist',
-      dueDate: today,
-      priority: 'high',
-      status: 'todo',
-      estimateMinutes: 60,
-    });
-    await tasks.create(userId, {
-      title: 'Review calendar layout',
-      dueDate: today,
-      priority: 'medium',
-      status: 'todo',
-      estimateMinutes: 30,
-    });
-    await events.create(userId, {
-      kind: 'timed',
-      calendarId: work._id,
-      title: 'Focus block',
-      taskId: checklist._id,
-      startUtc: new Date(now.getTime() + HOUR_MS),
-      endUtc: new Date(now.getTime() + 2 * HOUR_MS),
-      timeZone,
-    });
-    await events.create(userId, {
-      kind: 'allDay',
-      calendarId: personal._id,
-      title: 'Keep evening free',
-      startDate: today,
-      endDate: toIsoDate(new Date(now.getTime() + 24 * HOUR_MS)),
-    });
+    const calendarIds = new Map<string, ObjectId>();
+    for (const { key, ...calendar } of DEMO_CALENDARS) {
+      const created = await calendars.create(userId, { ...calendar, visible: true }, now);
+      calendarIds.set(key, created._id);
+    }
+
+    const taskIds = new Map<string, ObjectId>();
+    for (const { key, dueInDays, ...task } of DEMO_TASKS) {
+      const dueDate = dueInDays === null ? null : addDays(today, dueInDays);
+      const created = await tasks.create(userId, { ...task, dueDate }, now);
+      taskIds.set(key, created._id);
+    }
+
+    const calendarId = (key: string): ObjectId => {
+      const id = calendarIds.get(key);
+      if (!id) throw new Error(`Demo calendar "${key}" is not defined`);
+      return id;
+    };
+
+    await Promise.all([
+      ...DEMO_BLOCKS.map((block) => {
+        const date = addDays(today, block.dayOffset);
+        return events.create(
+          userId,
+          {
+            kind: 'timed',
+            calendarId: calendarId(block.calendar),
+            title: block.title,
+            taskId: block.task ? (taskIds.get(block.task) ?? null) : null,
+            startUtc: instantAt(date, block.startMinutes, timeZone),
+            endUtc: instantAt(date, block.endMinutes, timeZone),
+            timeZone,
+          },
+          now,
+        );
+      }),
+      ...DEMO_ALL_DAY_EVENTS.map((event) => {
+        const startDate = addDays(today, event.dayOffset);
+        return events.create(
+          userId,
+          {
+            kind: 'allDay',
+            calendarId: calendarId(event.calendar),
+            title: event.title,
+            startDate,
+            endDate: addDays(startDate, event.days),
+          },
+          now,
+        );
+      }),
+    ]);
   }
 }
