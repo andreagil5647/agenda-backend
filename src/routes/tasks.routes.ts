@@ -10,7 +10,7 @@ import {
   taskSchema,
   tasksQuerySchema,
 } from '../schemas/tasks.schemas.js';
-import { notFound } from './responses.js';
+import { notFound, versioned } from './responses.js';
 
 export function createTasksRouter(
   registry: OpenAPIRegistry,
@@ -39,7 +39,7 @@ export function createTasksRouter(
     summary: 'Create a task',
     tags: ['Tasks'],
     request: { body: createTaskRequestSchema },
-    responses: { 201: { description: 'Created task', schema: taskSchema } },
+    responses: { 201: versioned('Created task', taskSchema) },
     handler: controller.create,
   });
 
@@ -50,7 +50,8 @@ export function createTasksRouter(
     summary: 'Update a task',
     tags: ['Tasks'],
     request: { params: objectIdParamSchema, body: patchTaskRequestSchema },
-    responses: { 200: { description: 'Updated task', schema: taskSchema }, 404: notFound },
+    conditional: true,
+    responses: { 200: versioned('Updated task', taskSchema), 404: notFound },
     handler: controller.update,
   });
 
@@ -61,6 +62,7 @@ export function createTasksRouter(
     summary: 'Delete a task',
     tags: ['Tasks'],
     request: { params: objectIdParamSchema },
+    conditional: true,
     responses: { 204: { description: 'Deleted task' }, 404: notFound },
     handler: controller.remove,
   });
@@ -72,7 +74,7 @@ export function createTasksRouter(
     summary: 'Restore a deleted task',
     tags: ['Tasks'],
     request: { params: objectIdParamSchema },
-    responses: { 201: { description: 'Restored task', schema: taskSchema }, 404: notFound },
+    responses: { 201: versioned('Restored task', taskSchema), 404: notFound },
     handler: controller.restore,
   });
 
@@ -83,7 +85,8 @@ export function createTasksRouter(
     summary: 'Move a task',
     tags: ['Tasks'],
     request: { params: objectIdParamSchema, body: moveTaskRequestSchema },
-    responses: { 200: { description: 'Moved task', schema: taskSchema }, 404: notFound },
+    conditional: true,
+    responses: { 200: versioned('Moved task', taskSchema), 404: notFound },
     handler: controller.move,
   });
 

@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { etagOf } from '../helpers/api-session.js';
 import { createTestConfig, silentLogger } from '../helpers/test-config.js';
 import { cookieHeader } from '../helpers/session-cookies.js';
 import { createTestDatabase, type TestDatabase } from '../helpers/test-database.js';
@@ -10,6 +11,7 @@ const origin = 'http://localhost:3000';
 interface TaskBody {
   id: string;
   title: string;
+  version: number;
 }
 
 describe('task ordering', () => {
@@ -72,6 +74,7 @@ describe('task ordering', () => {
       .set('Origin', origin)
       .set('Cookie', cookie)
       .set('X-CSRF-Token', csrfToken)
+      .set('If-Match', etagOf(third))
       .send({ afterId: first.id, beforeId: second.id });
     expect(moved.status).toBe(200);
 
@@ -87,6 +90,7 @@ describe('task ordering', () => {
       .set('Origin', origin)
       .set('Cookie', cookie)
       .set('X-CSRF-Token', csrfToken)
+      .set('If-Match', etagOf(task))
       .send({ beforeId: await firstTaskId() });
     expect(moved.status).toBe(200);
 

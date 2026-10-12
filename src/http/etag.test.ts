@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BadRequestError } from '../errors/app-error.js';
+import { BadRequestError, PreconditionRequiredError } from '../errors/app-error.js';
 import { requireIfMatchVersion, versionToEtag } from './etag.js';
 
 describe('version ETags', () => {
@@ -19,7 +19,7 @@ describe('version ETags', () => {
     },
   );
 
-  it('rejects a missing If-Match', () => {
-    expect(() => requireIfMatchVersion(undefined)).toThrow(BadRequestError);
+  it('asks for the precondition when If-Match is missing', () => {
+    expect(() => requireIfMatchVersion(undefined)).toThrow(PreconditionRequiredError);
   });
 });

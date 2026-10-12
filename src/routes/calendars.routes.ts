@@ -9,7 +9,7 @@ import {
   patchCalendarRequestSchema,
 } from '../schemas/calendars.schemas.js';
 import { objectIdParamSchema } from '../schemas/common.schemas.js';
-import { notFound, unauthorized } from './responses.js';
+import { notFound, unauthorized, versioned } from './responses.js';
 
 export function createCalendarsRouter(
   registry: OpenAPIRegistry,
@@ -41,7 +41,7 @@ export function createCalendarsRouter(
     tags: ['Calendars'],
     request: { body: createCalendarRequestSchema },
     responses: {
-      201: { description: 'Created calendar', schema: calendarSchema },
+      201: versioned('Created calendar', calendarSchema),
       401: unauthorized,
     },
     handler: controller.create,
@@ -54,7 +54,8 @@ export function createCalendarsRouter(
     summary: 'Update a calendar',
     tags: ['Calendars'],
     request: { params: objectIdParamSchema, body: patchCalendarRequestSchema },
-    responses: { 200: { description: 'Updated calendar', schema: calendarSchema }, 404: notFound },
+    conditional: true,
+    responses: { 200: versioned('Updated calendar', calendarSchema), 404: notFound },
     handler: controller.update,
   });
 
@@ -65,6 +66,7 @@ export function createCalendarsRouter(
     summary: 'Delete a calendar',
     tags: ['Calendars'],
     request: { params: objectIdParamSchema },
+    conditional: true,
     responses: { 204: { description: 'Deleted calendar' }, 404: notFound },
     handler: controller.remove,
   });

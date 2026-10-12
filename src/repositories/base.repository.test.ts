@@ -1,6 +1,6 @@
 import { ObjectId, type Filter, type MatchKeysAndValues } from 'mongodb';
 import { describe, expect, it } from 'vitest';
-import { BadRequestError, ConflictError } from '../errors/app-error.js';
+import { BadRequestError, PreconditionFailedError } from '../errors/app-error.js';
 import {
   byIdFilter,
   byUserAndIdFilter,
@@ -123,7 +123,8 @@ describe('versionConflictError', () => {
   it('names the resource and marks the version as stale', () => {
     const error = versionConflictError('Task');
 
-    expect(error).toBeInstanceOf(ConflictError);
+    expect(error).toBeInstanceOf(PreconditionFailedError);
+    expect(error.status).toBe(412);
     expect(error.message).toBe('Task was changed by another request');
     expect(error.details).toEqual({ reason: 'stale_version' });
   });

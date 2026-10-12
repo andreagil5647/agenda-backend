@@ -6,7 +6,9 @@ import {
   createRepositoryMetadata,
   objectIdToString,
   softDeleteUpdate,
+  unmatchedWriteError,
   versionedUpdate,
+  withExpectedVersion,
   type UserOwnedRepositoryDocument,
 } from './base.repository.js';
 
@@ -67,6 +69,7 @@ export class CalendarsRepository {
     userId: ObjectId,
     id: ObjectId,
     input: UpdateCalendarInput,
+    expectedVersion: number,
     now = new Date(),
   ): Promise<CalendarDocument> {
     const update = versionedUpdate<CalendarDocument>(
@@ -74,26 +77,31 @@ export class CalendarsRepository {
       now,
     );
     const result = await this.calendars.findOneAndUpdate(
-      byUserAndIdFilter<CalendarDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<CalendarDocument>(userId, id), expectedVersion),
       update,
       { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new NotFoundError('Calendar');
+      throw await unmatchedWriteError(this.calendars, userId, id, 'Calendar');
     }
 
     return result;
   }
 
-  async softDelete(userId: ObjectId, id: ObjectId, now = new Date()): Promise<void> {
+  async softDelete(
+    userId: ObjectId,
+    id: ObjectId,
+    expectedVersion: number,
+    now = new Date(),
+  ): Promise<void> {
     const result = await this.calendars.updateOne(
-      byUserAndIdFilter<CalendarDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<CalendarDocument>(userId, id), expectedVersion),
       softDeleteUpdate<CalendarDocument>(now),
     );
 
     if (result.matchedCount === 0) {
-      throw new NotFoundError('Calendar');
+      throw await unmatchedWriteError(this.calendars, userId, id, 'Calendar');
     }
   }
 

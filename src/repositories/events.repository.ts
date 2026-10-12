@@ -1,12 +1,11 @@
 import { ObjectId, type Collection, type Db, type Filter, type MatchKeysAndValues } from 'mongodb';
 import type { LocalDateSpan } from '../domain/time/local-date.js';
-import { NotFoundError } from '../errors/app-error.js';
 import {
   byUserAndIdFilter,
   byUserFilter,
   createRepositoryMetadata,
   softDeleteUpdate,
-  versionConflictError,
+  unmatchedWriteError,
   versionedUpdate,
   withExpectedVersion,
   type UserOwnedRepositoryDocument,
@@ -132,22 +131,25 @@ export class EventsRepository {
     );
 
     if (!result) {
-      throw (await this.findByUserAndId(userId, id))
-        ? versionConflictError('Event')
-        : new NotFoundError('Event');
+      throw await unmatchedWriteError(this.events, userId, id, 'Event');
     }
 
     return result;
   }
 
-  async softDelete(userId: ObjectId, id: ObjectId, now = new Date()): Promise<void> {
+  async softDelete(
+    userId: ObjectId,
+    id: ObjectId,
+    expectedVersion: number,
+    now = new Date(),
+  ): Promise<void> {
     const result = await this.events.updateOne(
-      byUserAndIdFilter<EventDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<EventDocument>(userId, id), expectedVersion),
       softDeleteUpdate<EventDocument>(now),
     );
 
     if (result.matchedCount === 0) {
-      throw new NotFoundError('Event');
+      throw await unmatchedWriteError(this.events, userId, id, 'Event');
     }
   }
 

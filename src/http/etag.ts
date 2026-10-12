@@ -1,4 +1,5 @@
-import { BadRequestError } from '../errors/app-error.js';
+import type { Response } from 'express';
+import { BadRequestError, PreconditionRequiredError } from '../errors/app-error.js';
 
 const VERSION_ETAG = /^"([1-9]\d*)"$/;
 
@@ -13,7 +14,7 @@ export function versionToEtag(version: number): string {
  */
 export function requireIfMatchVersion(headerValue: string | undefined): number {
   if (headerValue === undefined) {
-    throw new BadRequestError('If-Match header is required', {
+    throw new PreconditionRequiredError('If-Match header is required', {
       ifMatch: 'Send the current resource ETag, for example "3"',
     });
   }
@@ -26,4 +27,9 @@ export function requireIfMatchVersion(headerValue: string | undefined): number {
   }
 
   return version;
+}
+
+/** Sends a resource with its version as the ETag a later write must send back. */
+export function sendVersioned(res: Response, resource: { version: number }, status = 200): void {
+  res.status(status).set('ETag', versionToEtag(resource.version)).json(resource);
 }

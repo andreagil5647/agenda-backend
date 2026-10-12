@@ -36,7 +36,7 @@ export function createApp({ config, logger, db }: AppDependencies): App {
     cors({
       origin: config.http.corsOrigins,
       credentials: true,
-      exposedHeaders: ['X-Request-Id', 'RateLimit', 'RateLimit-Policy', 'Retry-After'],
+      exposedHeaders: ['X-Request-Id', 'ETag', 'RateLimit', 'RateLimit-Policy', 'Retry-After'],
     }),
   );
   app.use(express.json({ limit: '100kb' }));
