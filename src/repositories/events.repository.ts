@@ -4,7 +4,6 @@ import {
   byUserAndIdFilter,
   byUserFilter,
   createRepositoryMetadata,
-  objectIdToString,
   softDeleteUpdate,
   versionedUpdate,
   type UserOwnedRepositoryDocument,
@@ -21,23 +20,6 @@ export interface EventDocument extends UserOwnedRepositoryDocument {
   timeZone: string | null;
   startDate: string | null;
   endDate: string | null;
-}
-
-export interface EventView {
-  id: string;
-  calendarId: string;
-  title: string;
-  notes: string | null;
-  taskId: string | null;
-  kind: 'timed' | 'allDay';
-  startUtc: string | null;
-  endUtc: string | null;
-  timeZone: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export type CreateEventInput =
@@ -67,25 +49,6 @@ export interface EventRange {
   from: Date;
   to: Date;
   calendarIds?: ObjectId[];
-}
-
-export function toEventView(event: EventDocument): EventView {
-  return {
-    id: objectIdToString(event._id),
-    calendarId: objectIdToString(event.calendarId),
-    title: event.title,
-    notes: event.notes,
-    taskId: event.taskId ? objectIdToString(event.taskId) : null,
-    kind: event.kind,
-    startUtc: event.startUtc?.toISOString() ?? null,
-    endUtc: event.endUtc?.toISOString() ?? null,
-    timeZone: event.timeZone,
-    startDate: event.startDate,
-    endDate: event.endDate,
-    version: event.version,
-    createdAt: event.createdAt.toISOString(),
-    updatedAt: event.updatedAt.toISOString(),
-  };
 }
 
 export class EventsRepository {

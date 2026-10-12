@@ -1,28 +1,15 @@
 import { randomBytes } from 'node:crypto';
 import type { ObjectId } from 'mongodb';
 import { BadRequestError, NotFoundError } from '../errors/app-error.js';
-import {
-  toCalendarView,
-  type CalendarView,
-  type CalendarsRepository,
-} from '../repositories/calendars.repository.js';
-import {
-  toEventView,
-  type EventsRepository,
-  type EventView,
-  type UpdateEventInput,
-} from '../repositories/events.repository.js';
+import { toCalendarView, type CalendarView } from '../mappers/calendar.mapper.js';
+import { toEventView, type EventView } from '../mappers/event.mapper.js';
+import { toTaskView, type TaskView } from '../mappers/task.mapper.js';
+import { toUserView, type UserView } from '../mappers/user.mapper.js';
+import type { CalendarsRepository } from '../repositories/calendars.repository.js';
+import type { EventsRepository, UpdateEventInput } from '../repositories/events.repository.js';
 import type { SessionsRepository } from '../repositories/sessions.repository.js';
-import {
-  toTaskView,
-  type TasksRepository,
-  type TaskView,
-} from '../repositories/tasks.repository.js';
-import {
-  toUserView,
-  type UsersRepository,
-  type UserView,
-} from '../repositories/users.repository.js';
+import type { TasksRepository } from '../repositories/tasks.repository.js';
+import type { UsersRepository } from '../repositories/users.repository.js';
 import { hashPassword, type AuthService, type AuthSession } from './auth.service.js';
 import { parseObjectId } from '../repositories/base.repository.js';
 import type { PatchSettingsRequest } from '../schemas/me.schemas.js';
