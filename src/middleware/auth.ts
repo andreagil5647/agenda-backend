@@ -7,7 +7,7 @@ import {
   parseCookies,
   SESSION_COOKIE_NAME,
 } from '../http/cookies.js';
-import type { UserView } from '../repositories/users.repository.js';
+import type { UserView } from '../mappers/user.mapper.js';
 import type { AuthService, CurrentSession } from '../services/auth.service.js';
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

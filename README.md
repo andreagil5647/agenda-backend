@@ -57,8 +57,9 @@ src/
   server.ts         entry point: config, database, HTTP server, graceful shutdown
   config/           environment validation and logger
   routes/           endpoint declarations, one file per resource
-  controllers/      HTTP adapters
-  services/         business logic
+  controllers/      HTTP adapters, one file per resource
+  services/         use cases, one file per resource
+  mappers/          document-to-response mapping, one file per resource
   repositories/     MongoDB queries, one file per collection
   domain/           framework-free logic with unit tests
   schemas/          zod schemas shared by validation and docs

@@ -34,8 +34,9 @@ Known gaps in the done items, to close before the next feature:
       on the HTTP routes ([ADR 0006](adr/0006-optimistic-concurrency-with-version-etags.md))
 - [ ] Demo-user cap and `scripts/seed-demo.ts` (item 3 asked for both)
 - [ ] Integration tests for calendar reorder, calendar/event deletion and account deletion
-- [ ] The planner service mixes use cases and demo seeding; move seeding to `src/domain` or
-      `src/services/demo-seed.ts`
+- [x] One slice per resource (`me`, `calendars`, `tasks`, `events`, `demo`): routes,
+      controller, service, schemas and a view mapper each, instead of four bundled planner
+      files; demo seeding lives in `src/services/demo.service.ts`
 
 Remaining, in order: items 8-13 below. The "frontend first" order still holds: the web app
 needs a time grid with drag-and-drop (task onto grid creates a linked event) before the

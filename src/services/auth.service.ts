@@ -6,12 +6,11 @@ import type {
   SessionDocument,
   SessionsRepository,
 } from '../repositories/sessions.repository.js';
-import {
-  toUserView,
-  type UserDocument,
-  type UserSettings,
-  type UserView,
-  type UsersRepository,
+import { toUserView, type UserView } from '../mappers/user.mapper.js';
+import type {
+  UserDocument,
+  UserSettings,
+  UsersRepository,
 } from '../repositories/users.repository.js';
 import type { LoginRequest, RegisterRequest } from '../schemas/auth.schemas.js';
 

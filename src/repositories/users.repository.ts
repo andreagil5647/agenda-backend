@@ -10,7 +10,6 @@ import { ConflictError, NotFoundError } from '../errors/app-error.js';
 import {
   byIdFilter,
   createRepositoryMetadata,
-  objectIdToString,
   softDeleteUpdate,
   versionedUpdate,
   type RepositoryDocument,
@@ -34,14 +33,6 @@ export interface UserDocument extends RepositoryDocument {
   expiresAt?: Date | null;
 }
 
-export interface UserView {
-  id: string;
-  email: string;
-  displayName: string;
-  settings: UserSettings;
-  isDemo: boolean;
-}
-
 export interface CreateUserInput {
   email: string;
   passwordHash: string;
@@ -60,16 +51,6 @@ function activeUserFilter(now: Date): Filter<UserDocument> {
 
 function isDuplicateKeyError(error: unknown): boolean {
   return error instanceof MongoServerError && error.code === 11000;
-}
-
-export function toUserView(user: UserDocument): UserView {
-  return {
-    id: objectIdToString(user._id),
-    email: user.email,
-    displayName: user.displayName,
-    settings: user.settings,
-    isDemo: user.isDemo,
-  };
 }
 
 export class UsersRepository {
