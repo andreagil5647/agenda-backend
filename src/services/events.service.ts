@@ -1,4 +1,5 @@
 import type { ObjectId } from 'mongodb';
+import { findSchedulePatchProblem } from '../domain/events/schedule.js';
 import { localDateSpan } from '../domain/time/local-date.js';
 import { BadRequestError, NotFoundError } from '../errors/app-error.js';
 import { toEventView, type EventView } from '../mappers/event.mapper.js';
@@ -6,6 +7,7 @@ import { parseObjectId } from '../repositories/base.repository.js';
 import type { CalendarsRepository } from '../repositories/calendars.repository.js';
 import type {
   CreateEventInput,
+  EventDocument,
   EventsRepository,
   UpdateEventInput,
 } from '../repositories/events.repository.js';
@@ -20,6 +22,8 @@ export interface EventsRepositories {
   calendars: CalendarsRepository;
 }
 
+const END_NOT_AFTER_START = 'Event end must be after start';
+
 function toCreateEventInput(input: CreateEventRequest): CreateEventInput {
   const shared = {
     calendarId: parseObjectId(input.calendarId, 'calendarId'),
@@ -32,15 +36,28 @@ function toCreateEventInput(input: CreateEventRequest): CreateEventInput {
     const startUtc = new Date(input.startUtc);
     const endUtc = new Date(input.endUtc);
     if (endUtc <= startUtc) {
-      throw new BadRequestError('Event end must be after start');
+      throw new BadRequestError(END_NOT_AFTER_START);
     }
     return { ...shared, kind: input.kind, startUtc, endUtc, timeZone: input.timeZone };
   }
 
   if (input.endDate <= input.startDate) {
-    throw new BadRequestError('Event end date must be after start date');
+    throw new BadRequestError(END_NOT_AFTER_START);
   }
   return { ...shared, kind: input.kind, startDate: input.startDate, endDate: input.endDate };
+}
+
+function assertPatchFitsEvent(event: EventDocument, update: UpdateEventInput): void {
+  const problem = findSchedulePatchProblem(event.kind, event, update);
+  if (problem?.reason === 'fields_of_other_kind') {
+    const kind = event.kind === 'timed' ? 'a timed' : 'an all-day';
+    throw new BadRequestError(`${problem.fields.join(', ')} cannot be set on ${kind} event`, {
+      fields: problem.fields,
+    });
+  }
+  if (problem) {
+    throw new BadRequestError(END_NOT_AFTER_START);
+  }
 }
 
 function toUpdateEventInput(input: PatchEventRequest): UpdateEventInput {
@@ -87,15 +104,19 @@ export class EventsService {
   }
 
   async update(userId: ObjectId, id: string, input: PatchEventRequest): Promise<EventView> {
+    const eventId = parseObjectId(id);
+    const current = await this.repositories.events.findByUserAndId(userId, eventId);
+    if (!current) {
+      throw new NotFoundError('Event');
+    }
+
+    const update = toUpdateEventInput(input);
+    assertPatchFitsEvent(current, update);
     if (input.calendarId) {
       await this.requireCalendar(userId, input.calendarId);
     }
 
-    const event = await this.repositories.events.update(
-      userId,
-      parseObjectId(id),
-      toUpdateEventInput(input),
-    );
+    const event = await this.repositories.events.update(userId, eventId, update, current.version);
     return toEventView(event);
   }
 
