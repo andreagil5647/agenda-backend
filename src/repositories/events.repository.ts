@@ -1,12 +1,13 @@
 import { ObjectId, type Collection, type Db, type Filter, type MatchKeysAndValues } from 'mongodb';
-import { NotFoundError } from '../errors/app-error.js';
+import type { LocalDateSpan } from '../domain/time/local-date.js';
 import {
   byUserAndIdFilter,
   byUserFilter,
   createRepositoryMetadata,
-  objectIdToString,
   softDeleteUpdate,
+  unmatchedWriteError,
   versionedUpdate,
+  withExpectedVersion,
   type UserOwnedRepositoryDocument,
 } from './base.repository.js';
 
@@ -21,23 +22,6 @@ export interface EventDocument extends UserOwnedRepositoryDocument {
   timeZone: string | null;
   startDate: string | null;
   endDate: string | null;
-}
-
-export interface EventView {
-  id: string;
-  calendarId: string;
-  title: string;
-  notes: string | null;
-  taskId: string | null;
-  kind: 'timed' | 'allDay';
-  startUtc: string | null;
-  endUtc: string | null;
-  timeZone: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export type CreateEventInput =
@@ -66,26 +50,9 @@ export type UpdateEventInput = Partial<Omit<EventDocument, keyof UserOwnedReposi
 export interface EventRange {
   from: Date;
   to: Date;
+  /** The calendar dates the instant range covers for the user; all-day events have no zone. */
+  dates: LocalDateSpan;
   calendarIds?: ObjectId[];
-}
-
-export function toEventView(event: EventDocument): EventView {
-  return {
-    id: objectIdToString(event._id),
-    calendarId: objectIdToString(event.calendarId),
-    title: event.title,
-    notes: event.notes,
-    taskId: event.taskId ? objectIdToString(event.taskId) : null,
-    kind: event.kind,
-    startUtc: event.startUtc?.toISOString() ?? null,
-    endUtc: event.endUtc?.toISOString() ?? null,
-    timeZone: event.timeZone,
-    startDate: event.startDate,
-    endDate: event.endDate,
-    version: event.version,
-    createdAt: event.createdAt.toISOString(),
-    updatedAt: event.updatedAt.toISOString(),
-  };
 }
 
 export class EventsRepository {
@@ -96,12 +63,14 @@ export class EventsRepository {
   }
 
   async listByRange(userId: ObjectId, range: EventRange): Promise<EventDocument[]> {
-    const fromDate = range.from.toISOString().slice(0, 10);
-    const toDate = range.to.toISOString().slice(0, 10);
     const filter: Filter<EventDocument> = {
       $or: [
         { kind: 'timed', startUtc: { $lt: range.to }, endUtc: { $gt: range.from } },
-        { kind: 'allDay', startDate: { $lt: toDate }, endDate: { $gt: fromDate } },
+        {
+          kind: 'allDay',
+          startDate: { $lte: range.dates.last },
+          endDate: { $gt: range.dates.first },
+        },
       ],
     };
 
@@ -140,33 +109,47 @@ export class EventsRepository {
     return event;
   }
 
+  async findByUserAndId(userId: ObjectId, id: ObjectId): Promise<EventDocument | null> {
+    return this.events.findOne(byUserAndIdFilter<EventDocument>(userId, id));
+  }
+
+  /**
+   * Applies the change only if the event is still at `expectedVersion`, so a
+   * change checked against one state of the event cannot land on another.
+   */
   async update(
     userId: ObjectId,
     id: ObjectId,
     input: UpdateEventInput,
+    expectedVersion: number,
     now = new Date(),
   ): Promise<EventDocument> {
     const result = await this.events.findOneAndUpdate(
-      byUserAndIdFilter<EventDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<EventDocument>(userId, id), expectedVersion),
       versionedUpdate<EventDocument>(input as MatchKeysAndValues<EventDocument>, now),
       { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new NotFoundError('Event');
+      throw await unmatchedWriteError(this.events, userId, id, 'Event');
     }
 
     return result;
   }
 
-  async softDelete(userId: ObjectId, id: ObjectId, now = new Date()): Promise<void> {
+  async softDelete(
+    userId: ObjectId,
+    id: ObjectId,
+    expectedVersion: number,
+    now = new Date(),
+  ): Promise<void> {
     const result = await this.events.updateOne(
-      byUserAndIdFilter<EventDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<EventDocument>(userId, id), expectedVersion),
       softDeleteUpdate<EventDocument>(now),
     );
 
     if (result.matchedCount === 0) {
-      throw new NotFoundError('Event');
+      throw await unmatchedWriteError(this.events, userId, id, 'Event');
     }
   }
 

@@ -9,6 +9,8 @@ export const ERROR_CODES = [
   'FORBIDDEN',
   'NOT_FOUND',
   'CONFLICT',
+  'PRECONDITION_FAILED',
+  'PRECONDITION_REQUIRED',
   'PAYLOAD_TOO_LARGE',
   'RATE_LIMITED',
   'INTERNAL_ERROR',
@@ -58,8 +60,22 @@ export class ConflictError extends AppError {
   }
 }
 
+/** The resource is no longer at the version the client based its change on. */
+export class PreconditionFailedError extends AppError {
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(412, 'PRECONDITION_FAILED', message, details);
+  }
+}
+
+/** The request must say which version of the resource it expects to change. */
+export class PreconditionRequiredError extends AppError {
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(428, 'PRECONDITION_REQUIRED', message, details);
+  }
+}
+
 export class RateLimitedError extends AppError {
-  constructor() {
-    super(429, 'RATE_LIMITED', 'Too many requests, please try again later');
+  constructor(message = 'Too many requests, please try again later') {
+    super(429, 'RATE_LIMITED', message);
   }
 }

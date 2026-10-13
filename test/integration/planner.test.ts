@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { etagOf } from '../helpers/api-session.js';
 import { createTestConfig, silentLogger } from '../helpers/test-config.js';
 import { cookieHeader } from '../helpers/session-cookies.js';
 import { createTestDatabase, type TestDatabase } from '../helpers/test-database.js';
@@ -23,6 +24,7 @@ interface TaskBody {
   id: string;
   title: string;
   status: string;
+  version: number;
 }
 
 interface EventBody {
@@ -114,6 +116,7 @@ describe('planner API', () => {
       .set('Origin', origin)
       .set('Cookie', auth.cookie)
       .set('X-CSRF-Token', auth.csrfToken)
+      .set('If-Match', etagOf(taskBody))
       .send({ status: 'done' });
     expect(updatedTask.status).toBe(200);
     const updatedTaskBody = updatedTask.body as TaskBody;
@@ -147,7 +150,8 @@ describe('planner API', () => {
       .delete(`/api/v1/tasks/${taskBody.id}`)
       .set('Origin', origin)
       .set('Cookie', auth.cookie)
-      .set('X-CSRF-Token', auth.csrfToken);
+      .set('X-CSRF-Token', auth.csrfToken)
+      .set('If-Match', etagOf(updatedTaskBody));
     expect(deletedTask.status).toBe(204);
 
     const restoredTask = await request(app)

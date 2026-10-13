@@ -53,6 +53,8 @@
               "FORBIDDEN",
               "NOT_FOUND",
               "CONFLICT",
+              "PRECONDITION_FAILED",
+              "PRECONDITION_REQUIRED",
               "PAYLOAD_TOO_LARGE",
               "RATE_LIMITED",
               "INTERNAL_ERROR"
@@ -216,6 +218,18 @@
           "accentColor"
         ]
       },
+      "DemoRequest": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "IANA zone the demo day is laid out in. Defaults to UTC"
+          }
+        },
+        "default": {}
+      },
       "RegisterRequest": {
         "type": "object",
         "properties": {
@@ -234,6 +248,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          },
+          "timeZone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "IANA zone the account starts in, usually the browser zone. Defaults to UTC"
           }
         },
         "required": [
@@ -315,7 +335,9 @@
         "type": "object",
         "properties": {
           "timeZone": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
           },
           "weekStartsOn": {
             "anyOf": [
@@ -455,12 +477,10 @@
           "colorKey": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 32,
-            "default": "blue"
+            "maxLength": 32
           },
           "visible": {
-            "type": "boolean",
-            "default": true
+            "type": "boolean"
           },
           "defaultReminderMinutes": {
             "type": "array",
@@ -468,8 +488,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 10080
-            },
-            "default": []
+            }
           }
         }
       },
@@ -620,22 +639,19 @@
               "low",
               "medium",
               "high"
-            ],
-            "default": "none"
+            ]
           },
           "status": {
             "type": "string",
             "enum": [
               "todo",
               "done"
-            ],
-            "default": "todo"
+            ]
           },
           "estimateMinutes": {
             "type": "integer",
             "minimum": 5,
-            "maximum": 1440,
-            "default": 30
+            "maximum": 1440
           }
         }
       },
@@ -988,6 +1004,67 @@
         }
       }
     },
+    "/api/v1/auth/demo": {
+      "post": {
+        "operationId": "createDemoSession",
+        "summary": "Start a seeded demo session",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Demo user created and signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedSession"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many demo sign-ins from this address, or the demo is full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/register": {
       "post": {
         "operationId": "register",
@@ -1093,37 +1170,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/demo": {
-      "post": {
-        "operationId": "createDemoSession",
-        "summary": "Start a seeded demo session",
-        "tags": [
-          "Auth"
-        ],
-        "responses": {
-          "201": {
-            "description": "Demo user created and signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticatedSession"
                 }
               }
             }
@@ -1402,6 +1448,16 @@
         "responses": {
           "201": {
             "description": "Created calendar",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1459,6 +1515,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -1474,6 +1540,16 @@
         "responses": {
           "200": {
             "description": "Updated calendar",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1492,8 +1568,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {
@@ -1529,6 +1625,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "responses": {
@@ -1545,8 +1651,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {
@@ -1707,6 +1833,16 @@
         "responses": {
           "201": {
             "description": "Created task",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1754,6 +1890,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -1769,6 +1915,16 @@
         "responses": {
           "200": {
             "description": "Updated task",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1787,8 +1943,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {
@@ -1824,6 +2000,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "responses": {
@@ -1840,8 +2026,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {
@@ -1884,6 +2090,16 @@
         "responses": {
           "201": {
             "description": "Restored task",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1941,6 +2157,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -1956,6 +2182,16 @@
         "responses": {
           "200": {
             "description": "Moved task",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1974,8 +2210,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {
@@ -2087,6 +2343,16 @@
         "responses": {
           "201": {
             "description": "Created event",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2134,6 +2400,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -2149,6 +2425,16 @@
         "responses": {
           "200": {
             "description": "Updated event",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "The version of the returned resource, to send back in If-Match"
+                },
+                "required": true,
+                "description": "The version of the returned resource, to send back in If-Match"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2167,8 +2453,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {
@@ -2204,6 +2510,16 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The ETag of the version being changed, as last sent by the API, such as \"3\""
+            },
+            "required": true,
+            "description": "The ETag of the version being changed, as last sent by the API, such as \"3\"",
+            "name": "If-Match",
+            "in": "header"
           }
         ],
         "responses": {
@@ -2220,8 +2536,28 @@
               }
             }
           },
+          "412": {
+            "description": "The resource changed since the version in If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing",
             "content": {
               "application/json": {
                 "schema": {

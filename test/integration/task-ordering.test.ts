@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { etagOf } from '../helpers/api-session.js';
 import { createTestConfig, silentLogger } from '../helpers/test-config.js';
 import { cookieHeader } from '../helpers/session-cookies.js';
 import { createTestDatabase, type TestDatabase } from '../helpers/test-database.js';
@@ -10,6 +11,7 @@ const origin = 'http://localhost:3000';
 interface TaskBody {
   id: string;
   title: string;
+  version: number;
 }
 
 describe('task ordering', () => {
@@ -72,11 +74,31 @@ describe('task ordering', () => {
       .set('Origin', origin)
       .set('Cookie', cookie)
       .set('X-CSRF-Token', csrfToken)
+      .set('If-Match', etagOf(third))
       .send({ afterId: first.id, beforeId: second.id });
     expect(moved.status).toBe(200);
 
     const titles = (await listTitles()).filter((title) => title.startsWith('Move '));
     expect(titles).toEqual(['Move A', 'Move C', 'Move B']);
+  });
+
+  it('keeps a task in its place when it is completed', async () => {
+    const before = await createTask('Stays put A');
+    const completed = await createTask('Stays put B');
+    await createTask('Stays put C');
+
+    const done = await request(app)
+      .patch(`/api/v1/tasks/${completed.id}`)
+      .set('Origin', origin)
+      .set('Cookie', cookie)
+      .set('X-CSRF-Token', csrfToken)
+      .set('If-Match', etagOf(completed))
+      .send({ status: 'done' });
+    expect(done.status).toBe(200);
+
+    const titles = (await listTitles()).filter((title) => title.startsWith('Stays put '));
+    expect(titles).toEqual(['Stays put A', 'Stays put B', 'Stays put C']);
+    expect(before.id).not.toBe(completed.id);
   });
 
   it('moves a task to the top of the list', async () => {
@@ -87,6 +109,7 @@ describe('task ordering', () => {
       .set('Origin', origin)
       .set('Cookie', cookie)
       .set('X-CSRF-Token', csrfToken)
+      .set('If-Match', etagOf(task))
       .send({ beforeId: await firstTaskId() });
     expect(moved.status).toBe(200);
 

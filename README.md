@@ -51,14 +51,25 @@ Every error response has the same shape, and clients branch on `code`:
 { "code": "NOT_FOUND", "message": "Route GET /api/v1/nope not found", "requestId": "…" }
 ```
 
+Calendars, tasks and events carry a `version`, sent as an `ETag`. Changing or deleting one
+requires `If-Match` with the version the change is based on: a stale version answers `412`
+and a missing header `428`, so an old tab cannot overwrite a newer edit
+([ADR 0006](docs/adr/0006-optimistic-concurrency-with-version-etags.md)).
+
+```bash
+curl -X PATCH /api/v1/tasks/$ID -H 'If-Match: "3"' -d '{"status":"done"}'   # 200, ETag: "4"
+curl -X PATCH /api/v1/tasks/$ID -H 'If-Match: "3"' -d '{"title":"Again"}'   # 412
+```
+
 ```text
 src/
   app.ts            builds the Express app from its dependencies (used by tests)
   server.ts         entry point: config, database, HTTP server, graceful shutdown
   config/           environment validation and logger
   routes/           endpoint declarations, one file per resource
-  controllers/      HTTP adapters
-  services/         business logic
+  controllers/      HTTP adapters, one file per resource
+  services/         use cases, one file per resource
+  mappers/          document-to-response mapping, one file per resource
   repositories/     MongoDB queries, one file per collection
   domain/           framework-free logic with unit tests
   schemas/          zod schemas shared by validation and docs
@@ -117,16 +128,18 @@ In production the browser never calls this service directly. The web app's stati
 rewrites `/api/*` to it, so the API shares the web app's origin and session cookies are
 first-party (see [ADR 0003](docs/adr/0003-same-origin-api-through-render-rewrite.md)).
 
-| Variable               | Required | Default                 | Notes                            |
-| ---------------------- | -------- | ----------------------- | -------------------------------- |
-| `MONGODB_URI`          | yes      |                         | `mongodb://` or `mongodb+srv://` |
-| `MONGODB_DB_NAME`      |          | `agenda`                |                                  |
-| `PORT`                 |          | `4000`                  | Set by Render                    |
-| `CORS_ORIGINS`         |          | `http://localhost:3000` | Comma-separated origins          |
-| `TRUST_PROXY_HOPS`     |          | `1`                     | Proxies in front of the app      |
-| `RATE_LIMIT_WINDOW_MS` |          | `900000`                |                                  |
-| `RATE_LIMIT_MAX`       |          | `600`                   | Requests per window per IP       |
-| `LOG_LEVEL`            |          | `info`                  | pino level                       |
+| Variable                | Required | Default                 | Notes                            |
+| ----------------------- | -------- | ----------------------- | -------------------------------- |
+| `MONGODB_URI`           | yes      |                         | `mongodb://` or `mongodb+srv://` |
+| `MONGODB_DB_NAME`       |          | `agenda`                |                                  |
+| `PORT`                  |          | `4000`                  | Set by Render                    |
+| `CORS_ORIGINS`          |          | `http://localhost:3000` | Comma-separated origins          |
+| `TRUST_PROXY_HOPS`      |          | `1`                     | Proxies in front of the app      |
+| `RATE_LIMIT_WINDOW_MS`  |          | `900000`                |                                  |
+| `RATE_LIMIT_MAX`        |          | `600`                   | Requests per window per IP       |
+| `DEMO_RATE_LIMIT_MAX`   |          | `20`                    | Demo sign-ins per window per IP  |
+| `DEMO_MAX_ACTIVE_USERS` |          | `200`                   | Demo accounts alive at once      |
+| `LOG_LEVEL`             |          | `info`                  | pino level                       |
 
 Invalid configuration stops the process at startup with a message that names each variable
 without printing its value.

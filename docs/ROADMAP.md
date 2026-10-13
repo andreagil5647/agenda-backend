@@ -30,12 +30,21 @@ Done:
 
 Known gaps in the done items, to close before the next feature:
 
-- [ ] `If-Match` / `version` conflict checks are in the repository base but not yet enforced
-      on the HTTP routes ([ADR 0006](adr/0006-optimistic-concurrency-with-version-etags.md))
-- [ ] Demo-user cap and `scripts/seed-demo.ts` (item 3 asked for both)
-- [ ] Integration tests for calendar reorder, calendar/event deletion and account deletion
-- [ ] The planner service mixes use cases and demo seeding; move seeding to `src/domain` or
-      `src/services/demo-seed.ts`
+- [x] `If-Match` is required on updates, deletes and task moves: `412` on a stale version,
+      `428` when missing ([ADR 0006](adr/0006-optimistic-concurrency-with-version-etags.md))
+- [x] `PATCH /events/:id` validates the merged event: end after start, fields matching the
+      event kind
+- [x] All-day events are matched against the account's local dates
+      ([debugging note 0004](debugging/0004-all-day-event-on-the-wrong-day.md))
+- [x] Demo accounts: a cap on how many exist at once, a stricter rate limit on
+      `POST /auth/demo`, and a seeded day laid out on the visitor's wall clock
+- [ ] `scripts/seed-demo.ts`, to seed the same demo day into a local account
+- [ ] Integration tests for calendar reorder, calendar deletion and account deletion
+- [ ] Lint rule that keeps `src/domain` free of Express and MongoDB imports, and a coverage
+      threshold in CI
+- [x] One slice per resource (`me`, `calendars`, `tasks`, `events`, `demo`): routes,
+      controller, service, schemas and a view mapper each, instead of four bundled planner
+      files; demo seeding lives in `src/services/demo.service.ts`
 
 Remaining, in order: items 8-13 below. The "frontend first" order still holds: the web app
 needs a time grid with drag-and-drop (task onto grid creates a linked event) before the

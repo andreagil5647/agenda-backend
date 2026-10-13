@@ -4,8 +4,12 @@ import type { Db } from 'mongodb';
 import type { Logger } from 'pino';
 import type { Config } from '../config/env.js';
 import { AuthController } from '../controllers/auth.controller.js';
+import { CalendarsController } from '../controllers/calendars.controller.js';
+import { DemoController } from '../controllers/demo.controller.js';
+import { EventsController } from '../controllers/events.controller.js';
 import { HealthController } from '../controllers/health.controller.js';
-import { PlannerController } from '../controllers/planner.controller.js';
+import { MeController } from '../controllers/me.controller.js';
+import { TasksController } from '../controllers/tasks.controller.js';
 import { createAuthMiddleware } from '../middleware/auth.js';
 import { createRateLimiter } from '../middleware/rate-limit.js';
 import { createRequestIntegrityMiddleware } from '../middleware/request-integrity.js';
@@ -15,11 +19,19 @@ import { SessionsRepository } from '../repositories/sessions.repository.js';
 import { TasksRepository } from '../repositories/tasks.repository.js';
 import { UsersRepository } from '../repositories/users.repository.js';
 import { AuthService } from '../services/auth.service.js';
+import { CalendarsService } from '../services/calendars.service.js';
+import { DemoService } from '../services/demo.service.js';
+import { EventsService } from '../services/events.service.js';
 import { HealthService } from '../services/health.service.js';
-import { PlannerService } from '../services/planner.service.js';
+import { MeService } from '../services/me.service.js';
+import { TasksService } from '../services/tasks.service.js';
 import { createAuthRouter } from './auth.routes.js';
+import { createCalendarsRouter } from './calendars.routes.js';
+import { createDemoRouter } from './demo.routes.js';
+import { createEventsRouter } from './events.routes.js';
 import { createHealthRouter } from './health.routes.js';
-import { createPlannerRouter } from './planner.routes.js';
+import { createMeRouter } from './me.routes.js';
+import { createTasksRouter } from './tasks.routes.js';
 
 export const API_BASE_PATH = '/api/v1';
 
@@ -47,36 +59,55 @@ export function createApiRouter({ config, logger, db, registry }: ApiRouterDepen
   router.use(createRateLimiter(config.http.rateLimit));
   router.use(createRequestIntegrityMiddleware(config));
 
-  const usersRepository = new UsersRepository(db);
-  const sessionsRepository = new SessionsRepository(db);
-  const calendarsRepository = new CalendarsRepository(db);
-  const tasksRepository = new TasksRepository(db);
-  const eventsRepository = new EventsRepository(db);
-  const authService = new AuthService({ users: usersRepository, sessions: sessionsRepository });
-  const plannerService = new PlannerService(
-    {
-      users: usersRepository,
-      sessions: sessionsRepository,
-      calendars: calendarsRepository,
-      tasks: tasksRepository,
-      events: eventsRepository,
-    },
+  const users = new UsersRepository(db);
+  const sessions = new SessionsRepository(db);
+  const calendars = new CalendarsRepository(db);
+  const tasks = new TasksRepository(db);
+  const events = new EventsRepository(db);
+
+  const authService = new AuthService({ users, sessions });
+  const demoService = new DemoService(
+    { users, calendars, tasks, events },
     authService,
+    config.demo.maxActiveUsers,
   );
-  const authController = new AuthController(authService, () => plannerService.createDemoSession());
-  const plannerController = new PlannerController(plannerService);
+  // Each demo sign-in hashes a password and writes a seeded day, so it gets a
+  // much lower ceiling than ordinary requests.
+  const demoRateLimiter = createRateLimiter({
+    windowMs: config.http.rateLimit.windowMs,
+    max: config.demo.rateLimitMax,
+  });
   const authMiddleware = createAuthMiddleware(authService);
-  router.use('/auth', createAuthRouter(registry, `${API_BASE_PATH}/auth`, authController));
-  const [meRouter, calendarsRouter, tasksRouter, eventsRouter] = createPlannerRouter(
-    registry,
-    API_BASE_PATH,
-    plannerController,
-    authMiddleware,
+
+  const authController = new AuthController(authService);
+  const demoController = new DemoController(demoService);
+  const meController = new MeController(
+    new MeService({ users, sessions, calendars, tasks, events }),
   );
-  router.use('/me', meRouter);
-  router.use('/calendars', calendarsRouter);
-  router.use('/tasks', tasksRouter);
-  router.use('/events', eventsRouter);
+  const calendarsController = new CalendarsController(new CalendarsService(calendars));
+  const tasksController = new TasksController(new TasksService(tasks));
+  const eventsController = new EventsController(new EventsService({ events, calendars }));
+
+  const mount = (path: string): string => `${API_BASE_PATH}${path}`;
+  router.use(
+    '/auth/demo',
+    demoRateLimiter,
+    createDemoRouter(registry, mount('/auth/demo'), demoController),
+  );
+  router.use('/auth', createAuthRouter(registry, mount('/auth'), authController));
+  router.use('/me', createMeRouter(registry, mount('/me'), meController, authMiddleware));
+  router.use(
+    '/calendars',
+    createCalendarsRouter(registry, mount('/calendars'), calendarsController, authMiddleware),
+  );
+  router.use(
+    '/tasks',
+    createTasksRouter(registry, mount('/tasks'), tasksController, authMiddleware),
+  );
+  router.use(
+    '/events',
+    createEventsRouter(registry, mount('/events'), eventsController, authMiddleware),
+  );
 
   return router;
 }

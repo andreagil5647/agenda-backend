@@ -5,10 +5,11 @@ import {
   byUserAndIdFilter,
   byUserFilter,
   createRepositoryMetadata,
-  objectIdToString,
   restoreUpdate,
   softDeleteUpdate,
+  unmatchedWriteError,
   versionedUpdate,
+  withExpectedVersion,
   type UserOwnedRepositoryDocument,
 } from './base.repository.js';
 
@@ -22,19 +23,6 @@ export interface TaskDocument extends UserOwnedRepositoryDocument {
   status: TaskStatus;
   estimateMinutes: number;
   order: string;
-}
-
-export interface TaskView {
-  id: string;
-  title: string;
-  dueDate: string | null;
-  priority: TaskPriority;
-  status: TaskStatus;
-  estimateMinutes: number;
-  order: string;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateTaskInput {
@@ -52,21 +40,6 @@ export interface TaskFilters {
   due?: string;
 }
 
-export function toTaskView(task: TaskDocument): TaskView {
-  return {
-    id: objectIdToString(task._id),
-    title: task.title,
-    dueDate: task.dueDate,
-    priority: task.priority,
-    status: task.status,
-    estimateMinutes: task.estimateMinutes,
-    order: task.order,
-    version: task.version,
-    createdAt: task.createdAt.toISOString(),
-    updatedAt: task.updatedAt.toISOString(),
-  };
-}
-
 export class TasksRepository {
   private readonly tasks: Collection<TaskDocument>;
 
@@ -81,7 +54,7 @@ export class TasksRepository {
 
     return this.tasks
       .find(byUserFilter<TaskDocument>(userId, filter))
-      .sort({ status: 1, order: 1, createdAt: 1 })
+      .sort({ order: 1, createdAt: 1 })
       .toArray();
   }
 
@@ -112,16 +85,17 @@ export class TasksRepository {
     userId: ObjectId,
     id: ObjectId,
     input: UpdateTaskInput,
+    expectedVersion: number,
     now = new Date(),
   ): Promise<TaskDocument> {
     const result = await this.tasks.findOneAndUpdate(
-      byUserAndIdFilter<TaskDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<TaskDocument>(userId, id), expectedVersion),
       versionedUpdate<TaskDocument>(input as MatchKeysAndValues<TaskDocument>, now),
       { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new NotFoundError('Task');
+      throw await unmatchedWriteError(this.tasks, userId, id, 'Task');
     }
 
     return result;
@@ -131,6 +105,7 @@ export class TasksRepository {
     userId: ObjectId,
     id: ObjectId,
     placement: { beforeId?: ObjectId | null; afterId?: ObjectId | null },
+    expectedVersion: number,
     now = new Date(),
   ): Promise<TaskDocument> {
     const [before, after] = await Promise.all([
@@ -146,18 +121,24 @@ export class TasksRepository {
       userId,
       id,
       { order: keyBetween(after?.order ?? null, before?.order ?? null) },
+      expectedVersion,
       now,
     );
   }
 
-  async softDelete(userId: ObjectId, id: ObjectId, now = new Date()): Promise<void> {
+  async softDelete(
+    userId: ObjectId,
+    id: ObjectId,
+    expectedVersion: number,
+    now = new Date(),
+  ): Promise<void> {
     const result = await this.tasks.updateOne(
-      byUserAndIdFilter<TaskDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<TaskDocument>(userId, id), expectedVersion),
       softDeleteUpdate<TaskDocument>(now),
     );
 
     if (result.matchedCount === 0) {
-      throw new NotFoundError('Task');
+      throw await unmatchedWriteError(this.tasks, userId, id, 'Task');
     }
   }
 

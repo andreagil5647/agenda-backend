@@ -6,12 +6,11 @@ import type {
   SessionDocument,
   SessionsRepository,
 } from '../repositories/sessions.repository.js';
-import {
-  toUserView,
-  type UserDocument,
-  type UserSettings,
-  type UserView,
-  type UsersRepository,
+import { toUserView, type UserView } from '../mappers/user.mapper.js';
+import type {
+  UserDocument,
+  UserSettings,
+  UsersRepository,
 } from '../repositories/users.repository.js';
 import type { LoginRequest, RegisterRequest } from '../schemas/auth.schemas.js';
 
@@ -65,9 +64,9 @@ function hashesMatch(left: string, right: string): boolean {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-export function defaultUserSettings(): UserSettings {
+export function defaultUserSettings(timeZone = 'UTC'): UserSettings {
   return {
-    timeZone: 'UTC',
+    timeZone,
     weekStartsOn: 1,
     hourCycle: 'h23',
     locale: 'en',
@@ -93,7 +92,7 @@ export class AuthService {
         email: normalizeEmail(input.email),
         passwordHash: await hashPassword(input.password),
         displayName: input.displayName.trim(),
-        settings: defaultUserSettings(),
+        settings: defaultUserSettings(input.timeZone),
       },
       now,
     );

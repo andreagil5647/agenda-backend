@@ -46,18 +46,6 @@ export function createAuthRouter(
 
   route({
     method: 'post',
-    path: '/demo',
-    operationId: 'createDemoSession',
-    summary: 'Start a seeded demo session',
-    tags: ['Auth'],
-    responses: {
-      201: { description: 'Demo user created and signed in', schema: authenticatedSessionSchema },
-    },
-    handler: controller.demo,
-  });
-
-  route({
-    method: 'post',
     path: '/logout',
     operationId: 'logout',
     summary: 'Log out',
