@@ -1,21 +1,18 @@
 import { ObjectId, type Filter, type MatchKeysAndValues } from 'mongodb';
 import { describe, expect, it } from 'vitest';
-import { BadRequestError, ConflictError } from '../errors/app-error.js';
+import { BadRequestError, PreconditionFailedError } from '../errors/app-error.js';
 import {
-  assertWriteMatched,
   byIdFilter,
   byUserAndIdFilter,
   byUserFilter,
   createRepositoryMetadata,
   FIRST_DOCUMENT_VERSION,
   objectIdToString,
-  parseIfMatchVersion,
   parseObjectId,
-  requireIfMatchVersion,
   restoreUpdate,
   softDeleteUpdate,
+  versionConflictError,
   versionedUpdate,
-  versionToEtag,
   withExpectedVersion,
   withSoftDeleteFilter,
   type RepositoryDocument,
@@ -122,31 +119,13 @@ describe('repository filter helpers', () => {
   });
 });
 
-describe('repository If-Match helpers', () => {
-  it('formats and parses quoted version etags', () => {
-    expect(versionToEtag(12)).toBe('"12"');
-    expect(parseIfMatchVersion('"12"')).toBe(12);
-    expect(requireIfMatchVersion('"3"')).toBe(3);
-  });
+describe('versionConflictError', () => {
+  it('names the resource and marks the version as stale', () => {
+    const error = versionConflictError('Task');
 
-  it('leaves optional If-Match headers optional', () => {
-    expect(parseIfMatchVersion(undefined)).toBeUndefined();
-  });
-
-  it.each(['12', 'W/"12"', '*', '"0"', '"1", "2"'])('rejects malformed If-Match %j', (value) => {
-    expect(() => parseIfMatchVersion(value)).toThrow(BadRequestError);
-  });
-
-  it('requires If-Match when a caller opts into that contract', () => {
-    expect(() => requireIfMatchVersion(undefined)).toThrow(BadRequestError);
-  });
-
-  it('converts unmatched writes into a stale-version conflict', () => {
-    expect(() => {
-      assertWriteMatched({ matchedCount: 0 }, 'Task');
-    }).toThrow(ConflictError);
-    expect(() => {
-      assertWriteMatched({ matchedCount: 1 }, 'Task');
-    }).not.toThrow();
+    expect(error).toBeInstanceOf(PreconditionFailedError);
+    expect(error.status).toBe(412);
+    expect(error.message).toBe('Task was changed by another request');
+    expect(error.details).toEqual({ reason: 'stale_version' });
   });
 });

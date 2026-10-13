@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import { registerUser, type ApiSession } from '../helpers/api-session.js';
+import { etagOf, registerUser, type ApiSession } from '../helpers/api-session.js';
 import { createTestConfig, silentLogger } from '../helpers/test-config.js';
 import { createTestDatabase, type TestDatabase } from '../helpers/test-database.js';
 
@@ -56,7 +56,7 @@ describe('PATCH /events/:id', () => {
   });
 
   it('moves a timed event and bumps its version', async () => {
-    const res = await owner.patch(`/events/${timed.id}`).send({
+    const res = await owner.patch(`/events/${timed.id}`).set('If-Match', etagOf(timed)).send({
       startUtc: '2026-10-12T14:00:00.000Z',
       endUtc: '2026-10-12T15:30:00.000Z',
     });
@@ -72,6 +72,7 @@ describe('PATCH /events/:id', () => {
   it('rejects an end that is before the stored start', async () => {
     const res = await owner
       .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
       .send({ endUtc: '2026-10-12T08:00:00.000Z' });
 
     expect(res.status).toBe(400);
@@ -84,13 +85,17 @@ describe('PATCH /events/:id', () => {
   it('rejects a start that is after the stored end', async () => {
     const res = await owner
       .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
       .send({ startUtc: '2026-10-12T11:00:00.000Z' });
 
     expect(res.status).toBe(400);
   });
 
   it('leaves the event untouched after a rejected change', async () => {
-    await owner.patch(`/events/${timed.id}`).send({ endUtc: '2026-10-12T08:00:00.000Z' });
+    await owner
+      .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
+      .send({ endUtc: '2026-10-12T08:00:00.000Z' });
 
     const list = await owner.get(
       '/events?from=2026-10-12T00:00:00.000Z&to=2026-10-13T00:00:00.000Z',
@@ -101,7 +106,10 @@ describe('PATCH /events/:id', () => {
   });
 
   it('rejects all-day dates on a timed event', async () => {
-    const res = await owner.patch(`/events/${timed.id}`).send({ startDate: '2026-10-14' });
+    const res = await owner
+      .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
+      .send({ startDate: '2026-10-14' });
 
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ details: { fields: ['startDate'] } });
@@ -110,6 +118,7 @@ describe('PATCH /events/:id', () => {
   it('rejects instants on an all-day event', async () => {
     const res = await owner
       .patch(`/events/${allDay.id}`)
+      .set('If-Match', etagOf(allDay))
       .send({ startUtc: '2026-10-12T09:00:00.000Z' });
 
     expect(res.status).toBe(400);
@@ -117,20 +126,29 @@ describe('PATCH /events/:id', () => {
   });
 
   it('rejects an all-day end date that is not after the start date', async () => {
-    const res = await owner.patch(`/events/${allDay.id}`).send({ endDate: '2026-10-12' });
+    const res = await owner
+      .patch(`/events/${allDay.id}`)
+      .set('If-Match', etagOf(allDay))
+      .send({ endDate: '2026-10-12' });
 
     expect(res.status).toBe(400);
   });
 
   it('renames an event without touching its schedule', async () => {
-    const res = await owner.patch(`/events/${timed.id}`).send({ title: 'Deep work' });
+    const res = await owner
+      .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
+      .send({ title: 'Deep work' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ title: 'Deep work', startUtc: timed.startUtc });
   });
 
   it('answers 404 for an event that does not exist', async () => {
-    const res = await owner.patch(`/events/${UNKNOWN_ID}`).send({ title: 'Ghost' });
+    const res = await owner
+      .patch(`/events/${UNKNOWN_ID}`)
+      .set('If-Match', etagOf(timed))
+      .send({ title: 'Ghost' });
 
     expect(res.status).toBe(404);
   });
@@ -140,9 +158,13 @@ describe('PATCH /events/:id', () => {
     const strangerCalendar = await stranger.post('/calendars').send({ name: 'Theirs' });
     const strangerCalendarId = (strangerCalendar.body as { id: string }).id;
 
-    const editTheirs = await stranger.patch(`/events/${timed.id}`).send({ title: 'Mine now' });
+    const editTheirs = await stranger
+      .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
+      .send({ title: 'Mine now' });
     const moveToTheirs = await owner
       .patch(`/events/${timed.id}`)
+      .set('If-Match', etagOf(timed))
       .send({ calendarId: strangerCalendarId });
 
     expect(editTheirs.status).toBe(404);

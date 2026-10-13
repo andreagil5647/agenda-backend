@@ -22,13 +22,18 @@ export class TasksService {
     return toTaskView(task);
   }
 
-  async update(userId: ObjectId, id: string, input: PatchTaskRequest): Promise<TaskView> {
-    const task = await this.tasks.update(userId, parseObjectId(id), input);
+  async update(
+    userId: ObjectId,
+    id: string,
+    input: PatchTaskRequest,
+    expectedVersion: number,
+  ): Promise<TaskView> {
+    const task = await this.tasks.update(userId, parseObjectId(id), input, expectedVersion);
     return toTaskView(task);
   }
 
-  remove(userId: ObjectId, id: string): Promise<void> {
-    return this.tasks.softDelete(userId, parseObjectId(id));
+  remove(userId: ObjectId, id: string, expectedVersion: number): Promise<void> {
+    return this.tasks.softDelete(userId, parseObjectId(id), expectedVersion);
   }
 
   async restore(userId: ObjectId, id: string): Promise<TaskView> {
@@ -36,11 +41,17 @@ export class TasksService {
     return toTaskView(task);
   }
 
-  async move(userId: ObjectId, id: string, input: MoveTaskRequest): Promise<TaskView> {
-    const task = await this.tasks.move(userId, parseObjectId(id), {
+  async move(
+    userId: ObjectId,
+    id: string,
+    input: MoveTaskRequest,
+    expectedVersion: number,
+  ): Promise<TaskView> {
+    const placement = {
       beforeId: input.beforeId ? parseObjectId(input.beforeId, 'beforeId') : null,
       afterId: input.afterId ? parseObjectId(input.afterId, 'afterId') : null,
-    });
+    };
+    const task = await this.tasks.move(userId, parseObjectId(id), placement, expectedVersion);
     return toTaskView(task);
   }
 }

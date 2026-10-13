@@ -51,6 +51,16 @@ Every error response has the same shape, and clients branch on `code`:
 { "code": "NOT_FOUND", "message": "Route GET /api/v1/nope not found", "requestId": "…" }
 ```
 
+Calendars, tasks and events carry a `version`, sent as an `ETag`. Changing or deleting one
+requires `If-Match` with the version the change is based on: a stale version answers `412`
+and a missing header `428`, so an old tab cannot overwrite a newer edit
+([ADR 0006](docs/adr/0006-optimistic-concurrency-with-version-etags.md)).
+
+```bash
+curl -X PATCH /api/v1/tasks/$ID -H 'If-Match: "3"' -d '{"status":"done"}'   # 200, ETag: "4"
+curl -X PATCH /api/v1/tasks/$ID -H 'If-Match: "3"' -d '{"title":"Again"}'   # 412
+```
+
 ```text
 src/
   app.ts            builds the Express app from its dependencies (used by tests)

@@ -1,8 +1,18 @@
-import { ObjectId, type Filter, type MatchKeysAndValues, type UpdateFilter } from 'mongodb';
-import { BadRequestError, ConflictError } from '../errors/app-error.js';
+import {
+  ObjectId,
+  type Collection,
+  type Filter,
+  type MatchKeysAndValues,
+  type UpdateFilter,
+} from 'mongodb';
+import {
+  BadRequestError,
+  NotFoundError,
+  PreconditionFailedError,
+  type AppError,
+} from '../errors/app-error.js';
 
 const OBJECT_ID_HEX = /^[0-9a-f]{24}$/i;
-const VERSION_ETAG = /^"([1-9]\d*)"$/;
 
 export const FIRST_DOCUMENT_VERSION = 1;
 
@@ -25,10 +35,6 @@ export interface RepositoryMetadata {
   updatedAt: Date;
   version: number;
   deletedAt: null;
-}
-
-export interface MatchedWriteResult {
-  matchedCount: number;
 }
 
 function cloneDate(value: Date): Date {
@@ -170,51 +176,24 @@ export function restoreUpdate<TDocument extends RepositoryDocument>(
   return versionedUpdate<TDocument>({ deletedAt: null } as MatchKeysAndValues<TDocument>, now);
 }
 
-export function versionToEtag(version: number): string {
-  assertPositiveVersion(version, 'version');
-
-  return `"${version}"`;
-}
-
-export function parseIfMatchVersion(headerValue: string | undefined): number | undefined {
-  if (headerValue === undefined) {
-    return undefined;
-  }
-
-  const match = VERSION_ETAG.exec(headerValue.trim());
-
-  if (!match) {
-    throw new BadRequestError('If-Match must be a quoted version number', {
-      ifMatch: 'Expected a header like "3"',
-    });
-  }
-
-  const version = Number(match[1]);
-  assertPositiveVersion(version, 'ifMatch');
-
-  return version;
-}
-
-export function requireIfMatchVersion(headerValue: string | undefined): number {
-  const version = parseIfMatchVersion(headerValue);
-
-  if (version === undefined) {
-    throw new BadRequestError('If-Match header is required', {
-      ifMatch: 'Send the current resource ETag, for example "3"',
-    });
-  }
-
-  return version;
-}
-
-export function versionConflictError(resource = 'Resource'): ConflictError {
-  return new ConflictError(`${resource} was changed by another request`, {
+export function versionConflictError(resource = 'Resource'): PreconditionFailedError {
+  return new PreconditionFailedError(`${resource} was changed by another request`, {
     reason: 'stale_version',
   });
 }
 
-export function assertWriteMatched(result: MatchedWriteResult, resource = 'Resource'): void {
-  if (result.matchedCount === 0) {
-    throw versionConflictError(resource);
-  }
+/**
+ * Explains a versioned write that matched nothing: the document is missing
+ * (or belongs to someone else), or it has moved on from the expected version.
+ */
+export async function unmatchedWriteError<TDocument extends UserOwnedRepositoryDocument>(
+  collection: Collection<TDocument>,
+  userId: ObjectId,
+  id: ObjectId,
+  resource: string,
+): Promise<AppError> {
+  const found = await collection.countDocuments(byUserAndIdFilter<TDocument>(userId, id), {
+    limit: 1,
+  });
+  return found > 0 ? versionConflictError(resource) : new NotFoundError(resource);
 }

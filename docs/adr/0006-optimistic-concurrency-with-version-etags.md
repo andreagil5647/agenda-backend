@@ -38,3 +38,19 @@ restore and delete operations increment `version` like any other mutation.
 - API clients must re-read a resource after a conflict before retrying the change.
 - Bulk reorder endpoints still need careful resource-specific design because they update several
   documents at once.
+
+## Update, 2026-10-12: status codes and scope
+
+The decision above left the status codes open. As implemented:
+
+- `PATCH` and `DELETE` on a calendar, task or event, and `PUT /tasks/:id/position`, require
+  `If-Match`. A route opts in with `conditional: true` in its definition, which both enforces the
+  header and documents it in the OpenAPI contract.
+- A missing header answers `428 Precondition Required`, a stale version `412 Precondition Failed`
+  with `details.reason: "stale_version"`, and a malformed header `400`. `409 Conflict` stays for
+  conflicts that are not about versions, such as a duplicate email.
+- A resource that does not exist, or belongs to another user, answers `404` whatever version is
+  sent, so the precondition cannot be used to probe for other users' ids.
+- `PUT /calendars/order` and `PATCH /me/settings` are not conditional. The first replaces the
+  whole order in one request and the second changes independent fields, so last write wins is
+  the intended behaviour for both.

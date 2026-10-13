@@ -9,7 +9,7 @@ import {
   eventsQuerySchema,
   patchEventRequestSchema,
 } from '../schemas/events.schemas.js';
-import { notFound } from './responses.js';
+import { notFound, versioned } from './responses.js';
 
 export function createEventsRouter(
   registry: OpenAPIRegistry,
@@ -38,7 +38,7 @@ export function createEventsRouter(
     summary: 'Create a non-recurring event',
     tags: ['Events'],
     request: { body: createEventRequestSchema },
-    responses: { 201: { description: 'Created event', schema: eventSchema } },
+    responses: { 201: versioned('Created event', eventSchema) },
     handler: controller.create,
   });
 
@@ -49,7 +49,8 @@ export function createEventsRouter(
     summary: 'Update a non-recurring event',
     tags: ['Events'],
     request: { params: objectIdParamSchema, body: patchEventRequestSchema },
-    responses: { 200: { description: 'Updated event', schema: eventSchema }, 404: notFound },
+    conditional: true,
+    responses: { 200: versioned('Updated event', eventSchema), 404: notFound },
     handler: controller.update,
   });
 
@@ -60,6 +61,7 @@ export function createEventsRouter(
     summary: 'Delete a non-recurring event',
     tags: ['Events'],
     request: { params: objectIdParamSchema },
+    conditional: true,
     responses: { 204: { description: 'Deleted event' }, 404: notFound },
     handler: controller.remove,
   });

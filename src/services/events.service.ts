@@ -3,7 +3,7 @@ import { findSchedulePatchProblem } from '../domain/events/schedule.js';
 import { localDateSpan } from '../domain/time/local-date.js';
 import { BadRequestError, NotFoundError } from '../errors/app-error.js';
 import { toEventView, type EventView } from '../mappers/event.mapper.js';
-import { parseObjectId } from '../repositories/base.repository.js';
+import { parseObjectId, versionConflictError } from '../repositories/base.repository.js';
 import type { CalendarsRepository } from '../repositories/calendars.repository.js';
 import type {
   CreateEventInput,
@@ -103,11 +103,21 @@ export class EventsService {
     return toEventView(event);
   }
 
-  async update(userId: ObjectId, id: string, input: PatchEventRequest): Promise<EventView> {
+  async update(
+    userId: ObjectId,
+    id: string,
+    input: PatchEventRequest,
+    expectedVersion: number,
+  ): Promise<EventView> {
     const eventId = parseObjectId(id);
     const current = await this.repositories.events.findByUserAndId(userId, eventId);
     if (!current) {
       throw new NotFoundError('Event');
+    }
+    // The rules below are checked against the stored event, so it has to be
+    // the version the client was looking at.
+    if (current.version !== expectedVersion) {
+      throw versionConflictError('Event');
     }
 
     const update = toUpdateEventInput(input);
@@ -116,12 +126,12 @@ export class EventsService {
       await this.requireCalendar(userId, input.calendarId);
     }
 
-    const event = await this.repositories.events.update(userId, eventId, update, current.version);
+    const event = await this.repositories.events.update(userId, eventId, update, expectedVersion);
     return toEventView(event);
   }
 
-  remove(userId: ObjectId, id: string): Promise<void> {
-    return this.repositories.events.softDelete(userId, parseObjectId(id));
+  remove(userId: ObjectId, id: string, expectedVersion: number): Promise<void> {
+    return this.repositories.events.softDelete(userId, parseObjectId(id), expectedVersion);
   }
 
   private async requireCalendar(userId: ObjectId, calendarId: string): Promise<void> {

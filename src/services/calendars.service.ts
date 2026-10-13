@@ -21,13 +21,18 @@ export class CalendarsService {
     return toCalendarView(calendar);
   }
 
-  async update(userId: ObjectId, id: string, input: PatchCalendarRequest): Promise<CalendarView> {
-    const calendar = await this.calendars.update(userId, parseObjectId(id), input);
+  async update(
+    userId: ObjectId,
+    id: string,
+    input: PatchCalendarRequest,
+    expectedVersion: number,
+  ): Promise<CalendarView> {
+    const calendar = await this.calendars.update(userId, parseObjectId(id), input, expectedVersion);
     return toCalendarView(calendar);
   }
 
-  remove(userId: ObjectId, id: string): Promise<void> {
-    return this.calendars.softDelete(userId, parseObjectId(id));
+  remove(userId: ObjectId, id: string, expectedVersion: number): Promise<void> {
+    return this.calendars.softDelete(userId, parseObjectId(id), expectedVersion);
   }
 
   async reorder(userId: ObjectId, input: CalendarOrderRequest): Promise<CalendarView[]> {

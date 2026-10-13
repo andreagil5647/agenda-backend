@@ -34,6 +34,11 @@ function createApiSession(app: Express, cookie: string, csrfToken: string): ApiS
   };
 }
 
+/** The If-Match value for a resource as the API last returned it. */
+export function etagOf(resource: { version: number }): string {
+  return `"${String(resource.version)}"`;
+}
+
 export async function registerUser(app: Express, email: string): Promise<ApiSession> {
   const res = await request(app)
     .post(`${API}/auth/register`)

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { sendVersioned } from '../http/etag.js';
 import { requireAuth } from '../middleware/auth.js';
 import type {
   CalendarOrderRequest,
@@ -21,25 +22,32 @@ export class CalendarsController {
     res: Response,
   ): Promise<void> => {
     const { userId } = requireAuth(req);
-    res.status(201).json(await this.calendarsService.create(userId, body));
+    sendVersioned(res, await this.calendarsService.create(userId, body), 201);
   };
 
   update = async (
-    { params, body }: { params: { id: string }; body: PatchCalendarRequest },
+    {
+      params,
+      body,
+      expectedVersion,
+    }: { params: { id: string }; body: PatchCalendarRequest; expectedVersion: number },
     req: Request,
     res: Response,
   ): Promise<void> => {
     const { userId } = requireAuth(req);
-    res.json(await this.calendarsService.update(userId, params.id, body));
+    sendVersioned(
+      res,
+      await this.calendarsService.update(userId, params.id, body, expectedVersion),
+    );
   };
 
   remove = async (
-    { params }: { params: { id: string } },
+    { params, expectedVersion }: { params: { id: string }; expectedVersion: number },
     req: Request,
     res: Response,
   ): Promise<void> => {
     const { userId } = requireAuth(req);
-    await this.calendarsService.remove(userId, params.id);
+    await this.calendarsService.remove(userId, params.id, expectedVersion);
     res.status(204).end();
   };
 

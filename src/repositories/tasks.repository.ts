@@ -7,7 +7,9 @@ import {
   createRepositoryMetadata,
   restoreUpdate,
   softDeleteUpdate,
+  unmatchedWriteError,
   versionedUpdate,
+  withExpectedVersion,
   type UserOwnedRepositoryDocument,
 } from './base.repository.js';
 
@@ -83,16 +85,17 @@ export class TasksRepository {
     userId: ObjectId,
     id: ObjectId,
     input: UpdateTaskInput,
+    expectedVersion: number,
     now = new Date(),
   ): Promise<TaskDocument> {
     const result = await this.tasks.findOneAndUpdate(
-      byUserAndIdFilter<TaskDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<TaskDocument>(userId, id), expectedVersion),
       versionedUpdate<TaskDocument>(input as MatchKeysAndValues<TaskDocument>, now),
       { returnDocument: 'after' },
     );
 
     if (!result) {
-      throw new NotFoundError('Task');
+      throw await unmatchedWriteError(this.tasks, userId, id, 'Task');
     }
 
     return result;
@@ -102,6 +105,7 @@ export class TasksRepository {
     userId: ObjectId,
     id: ObjectId,
     placement: { beforeId?: ObjectId | null; afterId?: ObjectId | null },
+    expectedVersion: number,
     now = new Date(),
   ): Promise<TaskDocument> {
     const [before, after] = await Promise.all([
@@ -117,18 +121,24 @@ export class TasksRepository {
       userId,
       id,
       { order: keyBetween(after?.order ?? null, before?.order ?? null) },
+      expectedVersion,
       now,
     );
   }
 
-  async softDelete(userId: ObjectId, id: ObjectId, now = new Date()): Promise<void> {
+  async softDelete(
+    userId: ObjectId,
+    id: ObjectId,
+    expectedVersion: number,
+    now = new Date(),
+  ): Promise<void> {
     const result = await this.tasks.updateOne(
-      byUserAndIdFilter<TaskDocument>(userId, id),
+      withExpectedVersion(byUserAndIdFilter<TaskDocument>(userId, id), expectedVersion),
       softDeleteUpdate<TaskDocument>(now),
     );
 
     if (result.matchedCount === 0) {
-      throw new NotFoundError('Task');
+      throw await unmatchedWriteError(this.tasks, userId, id, 'Task');
     }
   }
 
