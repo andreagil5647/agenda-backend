@@ -218,6 +218,18 @@
           "accentColor"
         ]
       },
+      "DemoRequest": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "IANA zone the demo day is laid out in. Defaults to UTC"
+          }
+        },
+        "default": {}
+      },
       "RegisterRequest": {
         "type": "object",
         "properties": {
@@ -236,6 +248,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 80
+          },
+          "timeZone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "IANA zone the account starts in, usually the browser zone. Defaults to UTC"
           }
         },
         "required": [
@@ -992,6 +1010,67 @@
         }
       }
     },
+    "/api/v1/auth/demo": {
+      "post": {
+        "operationId": "createDemoSession",
+        "summary": "Start a seeded demo session",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Demo user created and signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedSession"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request did not pass validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many demo sign-ins from this address, or the demo is full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/register": {
       "post": {
         "operationId": "register",
@@ -1097,37 +1176,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/demo": {
-      "post": {
-        "operationId": "createDemoSession",
-        "summary": "Start a seeded demo session",
-        "tags": [
-          "Auth"
-        ],
-        "responses": {
-          "201": {
-            "description": "Demo user created and signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticatedSession"
                 }
               }
             }

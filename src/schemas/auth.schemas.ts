@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { timeZoneSchema } from './common.schemas.js';
 
 export const passwordSchema = z
   .string()
@@ -11,8 +12,20 @@ export const registerRequestSchema = z
     email: z.email().max(320),
     password: passwordSchema,
     displayName: z.string().trim().min(1).max(80),
+    timeZone: timeZoneSchema
+      .optional()
+      .describe('IANA zone the account starts in, usually the browser zone. Defaults to UTC'),
   })
   .meta({ id: 'RegisterRequest' });
+
+export const demoRequestSchema = z
+  .object({
+    timeZone: timeZoneSchema
+      .optional()
+      .describe('IANA zone the demo day is laid out in. Defaults to UTC'),
+  })
+  .default({})
+  .meta({ id: 'DemoRequest' });
 
 export const loginRequestSchema = z
   .object({
@@ -63,6 +76,7 @@ export const sessionResponseSchema = z
   });
 
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+export type DemoRequest = z.infer<typeof demoRequestSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export type UserSettingsResponse = z.infer<typeof userSettingsSchema>;
 export type AuthUserResponse = z.infer<typeof authUserSchema>;

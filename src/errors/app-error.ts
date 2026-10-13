@@ -75,7 +75,7 @@ export class PreconditionRequiredError extends AppError {
 }
 
 export class RateLimitedError extends AppError {
-  constructor() {
-    super(429, 'RATE_LIMITED', 'Too many requests, please try again later');
+  constructor(message = 'Too many requests, please try again later') {
+    super(429, 'RATE_LIMITED', message);
   }
 }

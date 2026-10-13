@@ -21,6 +21,7 @@ export async function ensureDatabaseIndexes(db: Db): Promise<void> {
       { key: { userId: 1, deletedAt: 1 }, name: 'calendars_user_deleted' },
     ]),
     db.collection('tasks').createIndexes([
+      { key: { userId: 1, order: 1 }, name: 'tasks_user_order' },
       { key: { userId: 1, status: 1, order: 1 }, name: 'tasks_user_status_order' },
       { key: { userId: 1, dueDate: 1 }, name: 'tasks_user_due_date' },
       { key: { userId: 1, deletedAt: 1 }, name: 'tasks_user_deleted' },

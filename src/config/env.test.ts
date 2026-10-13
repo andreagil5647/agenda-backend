@@ -17,6 +17,7 @@ describe('loadConfig', () => {
         trustProxyHops: 1,
         rateLimit: { windowMs: 900_000, max: 600 },
       },
+      demo: { rateLimitMax: 20, maxActiveUsers: 200 },
       log: { level: 'info' },
     });
   });

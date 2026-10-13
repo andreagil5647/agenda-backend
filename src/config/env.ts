@@ -38,6 +38,8 @@ const envSchema = z.object({
     .positive()
     .default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
+  DEMO_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  DEMO_MAX_ACTIVE_USERS: z.coerce.number().int().positive().default(200),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
   // Set automatically by Render on every deploy.
   RENDER_GIT_COMMIT: z.string().optional(),
@@ -57,6 +59,12 @@ export interface Config {
     corsOrigins: string[];
     trustProxyHops: number;
     rateLimit: { windowMs: number; max: number };
+  };
+  demo: {
+    /** Demo sign-ins allowed per IP in one rate limit window. */
+    rateLimitMax: number;
+    /** Demo accounts that may exist at once; each lives for a day. */
+    maxActiveUsers: number;
   };
   log: {
     level: LogLevel;
@@ -99,6 +107,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
       corsOrigins: env.CORS_ORIGINS,
       trustProxyHops: env.TRUST_PROXY_HOPS,
       rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, max: env.RATE_LIMIT_MAX },
+    },
+    demo: {
+      rateLimitMax: env.DEMO_RATE_LIMIT_MAX,
+      maxActiveUsers: env.DEMO_MAX_ACTIVE_USERS,
     },
     log: {
       level: env.LOG_LEVEL,

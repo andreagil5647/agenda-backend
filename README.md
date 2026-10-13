@@ -128,16 +128,18 @@ In production the browser never calls this service directly. The web app's stati
 rewrites `/api/*` to it, so the API shares the web app's origin and session cookies are
 first-party (see [ADR 0003](docs/adr/0003-same-origin-api-through-render-rewrite.md)).
 
-| Variable               | Required | Default                 | Notes                            |
-| ---------------------- | -------- | ----------------------- | -------------------------------- |
-| `MONGODB_URI`          | yes      |                         | `mongodb://` or `mongodb+srv://` |
-| `MONGODB_DB_NAME`      |          | `agenda`                |                                  |
-| `PORT`                 |          | `4000`                  | Set by Render                    |
-| `CORS_ORIGINS`         |          | `http://localhost:3000` | Comma-separated origins          |
-| `TRUST_PROXY_HOPS`     |          | `1`                     | Proxies in front of the app      |
-| `RATE_LIMIT_WINDOW_MS` |          | `900000`                |                                  |
-| `RATE_LIMIT_MAX`       |          | `600`                   | Requests per window per IP       |
-| `LOG_LEVEL`            |          | `info`                  | pino level                       |
+| Variable                | Required | Default                 | Notes                            |
+| ----------------------- | -------- | ----------------------- | -------------------------------- |
+| `MONGODB_URI`           | yes      |                         | `mongodb://` or `mongodb+srv://` |
+| `MONGODB_DB_NAME`       |          | `agenda`                |                                  |
+| `PORT`                  |          | `4000`                  | Set by Render                    |
+| `CORS_ORIGINS`          |          | `http://localhost:3000` | Comma-separated origins          |
+| `TRUST_PROXY_HOPS`      |          | `1`                     | Proxies in front of the app      |
+| `RATE_LIMIT_WINDOW_MS`  |          | `900000`                |                                  |
+| `RATE_LIMIT_MAX`        |          | `600`                   | Requests per window per IP       |
+| `DEMO_RATE_LIMIT_MAX`   |          | `20`                    | Demo sign-ins per window per IP  |
+| `DEMO_MAX_ACTIVE_USERS` |          | `200`                   | Demo accounts alive at once      |
+| `LOG_LEVEL`             |          | `info`                  | pino level                       |
 
 Invalid configuration stops the process at startup with a message that names each variable
 without printing its value.
