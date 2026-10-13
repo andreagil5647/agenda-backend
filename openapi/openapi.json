@@ -67,6 +67,19 @@
           },
           "details": {
             "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "stale_version",
+                  "email_taken",
+                  "demo_full",
+                  "end_not_after_start",
+                  "fields_of_other_kind"
+                ],
+                "description": "Why the request failed, where the code alone is too coarse to say"
+              }
+            },
             "additionalProperties": {}
           },
           "requestId": {

@@ -120,7 +120,7 @@ describe('POST /auth/demo', () => {
 
     expect(first.status).toBe(201);
     expect(second.status).toBe(429);
-    expect(second.body).toMatchObject({ code: 'RATE_LIMITED' });
+    expect(second.body).toMatchObject({ code: 'RATE_LIMITED', details: { reason: 'demo_full' } });
     expect(firstStillWorks.status).toBe(200);
   });
 

@@ -40,7 +40,9 @@ export class DemoService {
     // A soft cap: two sign-ins racing past the count can overshoot it by one,
     // which is fine for a limit that only exists to bound storage.
     if ((await this.repositories.users.countActiveDemoUsers(now)) >= this.maxActiveUsers) {
-      throw new RateLimitedError('The demo is full right now, please try again in a few minutes');
+      throw new RateLimitedError('The demo is full right now, please try again in a few minutes', {
+        reason: 'demo_full',
+      });
     }
 
     const user = await this.repositories.users.create(
