@@ -2,14 +2,16 @@
 
 ## Branches
 
-| Branch    | Purpose                                                 |
-| --------- | ------------------------------------------------------- |
-| `main`    | Released code. Every merge deploys to Render.           |
-| `develop` | Integration branch. Feature branches start and end here |
-| `feat/*`  | New behaviour, e.g. `feat/auth-sessions`                |
-| `fix/*`   | Bug fixes                                               |
-| `chore/*` | Tooling, dependencies, configuration                    |
-| `docs/*`  | Documentation only                                      |
+| Branch       | Purpose                                                 |
+| ------------ | ------------------------------------------------------- |
+| `main`       | Released code. Every merge deploys to Render.           |
+| `develop`    | Integration branch. Feature branches start and end here |
+| `feat/*`     | New behaviour, e.g. `feat/auth-sessions`                |
+| `fix/*`      | Bug fixes                                               |
+| `refactor/*` | Restructuring with no change in behaviour               |
+| `test/*`     | Tests only                                              |
+| `chore/*`    | Tooling, dependencies, configuration                    |
+| `docs/*`     | Documentation only                                      |
 
 1. Branch from `develop`: `git switch -c feat/<topic> develop`.
 2. Keep commits small and focused. Each commit should build and pass its tests.
