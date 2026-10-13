@@ -57,6 +57,10 @@ Every error response has the same shape, and clients branch on `code`:
 { "code": "NOT_FOUND", "message": "Route GET /api/v1/nope not found", "requestId": "…" }
 ```
 
+The `message` is English, for logs. Where one code covers several situations a person should
+hear about differently (a `409` can be a taken email, a `429` a full demo), `details.reason`
+says which, from a fixed list in the contract. A client translates from `code` and `reason`.
+
 Calendars, tasks and events carry a `version`, sent as an `ETag`. Changing or deleting one
 requires `If-Match` with the version the change is based on: a stale version answers `412`
 and a missing header `428`, so an old tab cannot overwrite a newer edit
