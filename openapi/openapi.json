@@ -477,12 +477,10 @@
           "colorKey": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 32,
-            "default": "blue"
+            "maxLength": 32
           },
           "visible": {
-            "type": "boolean",
-            "default": true
+            "type": "boolean"
           },
           "defaultReminderMinutes": {
             "type": "array",
@@ -490,8 +488,7 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 10080
-            },
-            "default": []
+            }
           }
         }
       },
@@ -642,22 +639,19 @@
               "low",
               "medium",
               "high"
-            ],
-            "default": "none"
+            ]
           },
           "status": {
             "type": "string",
             "enum": [
               "todo",
               "done"
-            ],
-            "default": "todo"
+            ]
           },
           "estimateMinutes": {
             "type": "integer",
             "minimum": 5,
-            "maximum": 1440,
-            "default": 30
+            "maximum": 1440
           }
         }
       },
