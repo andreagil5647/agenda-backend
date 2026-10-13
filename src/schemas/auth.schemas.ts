@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { timeZoneSchema } from './common.schemas.js';
+import { localeSchema, timeZoneSchema } from './common.schemas.js';
 
 export const passwordSchema = z
   .string()
@@ -15,6 +15,9 @@ export const registerRequestSchema = z
     timeZone: timeZoneSchema
       .optional()
       .describe('IANA zone the account starts in, usually the browser zone. Defaults to UTC'),
+    locale: localeSchema
+      .optional()
+      .describe('Language the account starts in, usually the browser language. Defaults to en'),
   })
   .meta({ id: 'RegisterRequest' });
 
@@ -23,6 +26,11 @@ export const demoRequestSchema = z
     timeZone: timeZoneSchema
       .optional()
       .describe('IANA zone the demo day is laid out in. Defaults to UTC'),
+    locale: localeSchema
+      .optional()
+      .describe(
+        'Language the demo day is written in, usually the browser language. Defaults to en',
+      ),
   })
   .default({})
   .meta({ id: 'DemoRequest' });
@@ -39,7 +47,7 @@ export const userSettingsSchema = z
     timeZone: z.string(),
     weekStartsOn: z.union([z.literal(0), z.literal(1), z.literal(6)]),
     hourCycle: z.enum(['h12', 'h23']),
-    locale: z.string(),
+    locale: localeSchema,
     theme: z.enum(['system', 'light', 'dark']),
     accentColor: z.string(),
   })

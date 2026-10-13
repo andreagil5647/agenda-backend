@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LOCALES } from '../domain/locale.js';
 import { isTimeZone } from '../domain/time/local-date.js';
 import { ERROR_CODES, ERROR_REASONS } from '../errors/app-error.js';
 
@@ -29,6 +30,10 @@ export const timeZoneSchema = z
   .min(1)
   .max(80)
   .refine(isTimeZone, { message: 'must be an IANA time zone such as Europe/Madrid' });
+
+export const localeSchema = z
+  .enum(LOCALES)
+  .describe('The language of the interface and of the content a new account starts with');
 
 export const isoDateSchema = z.iso.date();
 export const isoDateTimeSchema = z.iso.datetime();

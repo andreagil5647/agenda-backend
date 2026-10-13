@@ -90,8 +90,12 @@ something also needs the CSRF token in a header
 the fields it sends: a field left out keeps its stored value.
 
 `POST /auth/demo` creates a throwaway account that is deleted after a day and opens it on a
-full, seeded day in the visitor's time zone. It has its own, stricter rate limit, and the number
-of demo accounts alive at once is capped.
+full, seeded day in the visitor's time zone, written in the language they ask for (`locale`,
+English or Spanish). It has its own, stricter rate limit, and the number of demo accounts alive
+at once is capped.
+
+An account's language (`settings.locale`) is one of the same two. It can be sent when signing up,
+and changed in `PATCH /me/settings`; the API refuses any other value.
 
 ## Time zones
 

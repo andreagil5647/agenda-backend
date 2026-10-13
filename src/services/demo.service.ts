@@ -1,11 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { ObjectId } from 'mongodb';
-import {
-  DEMO_ALL_DAY_EVENTS,
-  DEMO_BLOCKS,
-  DEMO_CALENDARS,
-  DEMO_TASKS,
-} from '../domain/demo/demo-day.js';
+import { demoDayFor, type DemoDay } from '../domain/demo/demo-day.js';
+import { DEFAULT_LOCALE, type Locale } from '../domain/locale.js';
 import { localDateOf } from '../domain/time/local-date.js';
 import { RateLimitedError } from '../errors/app-error.js';
 import { addDays, instantAt } from '../domain/time/zoned-time.js';
@@ -29,6 +25,13 @@ export interface DemoRepositories {
   events: EventsRepository;
 }
 
+export interface DemoOptions {
+  /** The zone the demo day is laid out in. */
+  timeZone?: string | undefined;
+  /** The language the demo day is written in. */
+  locale?: Locale | undefined;
+}
+
 export class DemoService {
   constructor(
     private readonly repositories: DemoRepositories,
@@ -36,7 +39,10 @@ export class DemoService {
     private readonly maxActiveUsers: number,
   ) {}
 
-  async createDemoSession(timeZone = 'UTC', now = new Date()): Promise<AuthSession> {
+  async createDemoSession(
+    { timeZone = 'UTC', locale = DEFAULT_LOCALE }: DemoOptions = {},
+    now = new Date(),
+  ): Promise<AuthSession> {
     // A soft cap: two sign-ins racing past the count can overshoot it by one,
     // which is fine for a limit that only exists to bound storage.
     if ((await this.repositories.users.countActiveDemoUsers(now)) >= this.maxActiveUsers) {
@@ -45,19 +51,20 @@ export class DemoService {
       });
     }
 
+    const day = demoDayFor(locale);
     const user = await this.repositories.users.create(
       {
         email: `demo-${randomBytes(4).toString('hex')}@demo.agenda.local`,
         passwordHash: await hashPassword(randomBytes(24).toString('base64url')),
-        displayName: 'Demo User',
-        settings: defaultUserSettings(timeZone),
+        displayName: day.displayName,
+        settings: defaultUserSettings(timeZone, locale),
         isDemo: true,
         expiresAt: new Date(now.getTime() + DEMO_ACCOUNT_TTL_MS),
       },
       now,
     );
 
-    await this.seedDemoDay(user._id, timeZone, now);
+    await this.seedDemoDay(user._id, day, timeZone, now);
     return this.authService.createSessionForUser(user, now);
   }
 
@@ -66,18 +73,23 @@ export class DemoService {
    * tasks are created one at a time because each takes the next position in
    * its list from the ones already stored.
    */
-  private async seedDemoDay(userId: ObjectId, timeZone: string, now: Date): Promise<void> {
+  private async seedDemoDay(
+    userId: ObjectId,
+    day: DemoDay,
+    timeZone: string,
+    now: Date,
+  ): Promise<void> {
     const { calendars, tasks, events } = this.repositories;
     const today = localDateOf(now, timeZone);
 
     const calendarIds = new Map<string, ObjectId>();
-    for (const { key, ...calendar } of DEMO_CALENDARS) {
+    for (const { key, ...calendar } of day.calendars) {
       const created = await calendars.create(userId, { ...calendar, visible: true }, now);
       calendarIds.set(key, created._id);
     }
 
     const taskIds = new Map<string, ObjectId>();
-    for (const { key, dueInDays, ...task } of DEMO_TASKS) {
+    for (const { key, dueInDays, ...task } of day.tasks) {
       const dueDate = dueInDays === null ? null : addDays(today, dueInDays);
       const created = await tasks.create(userId, { ...task, dueDate }, now);
       taskIds.set(key, created._id);
@@ -90,7 +102,7 @@ export class DemoService {
     };
 
     await Promise.all([
-      ...DEMO_BLOCKS.map((block) => {
+      ...day.blocks.map((block) => {
         const date = addDays(today, block.dayOffset);
         return events.create(
           userId,
@@ -106,7 +118,7 @@ export class DemoService {
           now,
         );
       }),
-      ...DEMO_ALL_DAY_EVENTS.map((event) => {
+      ...day.allDayEvents.map((event) => {
         const startDate = addDays(today, event.dayOffset);
         return events.create(
           userId,
