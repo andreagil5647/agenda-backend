@@ -11,8 +11,8 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   list = async ({ query }: { query: EventsQuery }, req: Request, res: Response): Promise<void> => {
-    const { userId } = requireAuth(req);
-    res.json(await this.eventsService.listInRange(userId, query));
+    const { userId, user } = requireAuth(req);
+    res.json(await this.eventsService.listInRange(userId, query, user.settings.timeZone));
   };
 
   create = async (
