@@ -67,6 +67,19 @@
           },
           "details": {
             "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "stale_version",
+                  "email_taken",
+                  "demo_full",
+                  "end_not_after_start",
+                  "fields_of_other_kind"
+                ],
+                "description": "Why the request failed, where the code alone is too coarse to say"
+              }
+            },
             "additionalProperties": {}
           },
           "requestId": {
@@ -195,7 +208,12 @@
             ]
           },
           "locale": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "description": "The language of the interface and of the content a new account starts with"
           },
           "theme": {
             "type": "string",
@@ -226,6 +244,14 @@
             "minLength": 1,
             "maxLength": 80,
             "description": "IANA zone the demo day is laid out in. Defaults to UTC"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "description": "Language the demo day is written in, usually the browser language. Defaults to en"
           }
         },
         "default": {}
@@ -254,6 +280,14 @@
             "minLength": 1,
             "maxLength": 80,
             "description": "IANA zone the account starts in, usually the browser zone. Defaults to UTC"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "description": "Language the account starts in, usually the browser language. Defaults to en"
           }
         },
         "required": [
@@ -369,7 +403,12 @@
             ]
           },
           "locale": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "description": "The language of the interface and of the content a new account starts with"
           },
           "theme": {
             "type": "string",

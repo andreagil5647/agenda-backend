@@ -8,7 +8,7 @@ import { createTestConfig, silentLogger } from '../helpers/test-config.js';
 import { createTestDatabase, type TestDatabase } from '../helpers/test-database.js';
 
 interface SessionBody {
-  user: { isDemo: boolean; settings: { timeZone: string } };
+  user: { isDemo: boolean; displayName: string; settings: { timeZone: string; locale: string } };
 }
 
 interface EventBody {
@@ -91,6 +91,50 @@ describe('POST /auth/demo', () => {
     expect(blocks.some((event) => event.kind === 'allDay')).toBe(true);
   });
 
+  it('writes the demo day in the language the visitor asks for', async () => {
+    const demo = await startDemo(app, { locale: 'es' });
+    const cookie = cookieHeader(demo);
+    const from = new Date(Date.now() - 2 * DAY_MS).toISOString();
+    const to = new Date(Date.now() + 3 * DAY_MS).toISOString();
+
+    const [calendars, tasks, events] = await Promise.all([
+      request(app).get('/api/v1/calendars').set('Cookie', cookie),
+      request(app).get('/api/v1/tasks').set('Cookie', cookie),
+      request(app).get(`/api/v1/events?from=${from}&to=${to}`).set('Cookie', cookie),
+    ]);
+
+    expect((demo.body as SessionBody).user).toMatchObject({
+      displayName: 'Usuario de la demo',
+      settings: { locale: 'es' },
+    });
+    expect((calendars.body as { name: string }[]).map(({ name }) => name)).toEqual([
+      'Trabajo',
+      'Personal',
+      'Salud',
+    ]);
+    expect((tasks.body as { title: string }[]).map(({ title }) => title)).toContain(
+      'Preparar la lista del lanzamiento',
+    );
+    expect((events.body as EventBody[]).map(({ title }) => title)).toEqual(
+      expect.arrayContaining(['Reunión diaria', 'Comida con Marta', 'Semana de lanzamiento']),
+    );
+  });
+
+  it('writes the demo day in English when no language is sent', async () => {
+    const demo = await startDemo(app, {});
+
+    expect((demo.body as SessionBody).user).toMatchObject({
+      displayName: 'Demo User',
+      settings: { locale: 'en' },
+    });
+  });
+
+  it('rejects a language the product is not written in', async () => {
+    const res = await startDemo(app, { locale: 'fr' });
+
+    expect(res.status).toBe(422);
+  });
+
   it('falls back to UTC when no time zone is sent', async () => {
     const withEmptyBody = await startDemo(app, {});
     const withoutBody = await startDemo(app);
@@ -120,7 +164,7 @@ describe('POST /auth/demo', () => {
 
     expect(first.status).toBe(201);
     expect(second.status).toBe(429);
-    expect(second.body).toMatchObject({ code: 'RATE_LIMITED' });
+    expect(second.body).toMatchObject({ code: 'RATE_LIMITED', details: { reason: 'demo_full' } });
     expect(firstStillWorks.status).toBe(200);
   });
 

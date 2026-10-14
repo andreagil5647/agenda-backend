@@ -7,10 +7,11 @@ events live on the same timeline, and you plan a day by dragging tasks into time
 
 The web app lives in [andreagil5647/agenda](https://github.com/andreagil5647/agenda).
 
-> **Status:** core API. Sign-up and cookie sessions, a seeded demo account, user settings,
-> calendars, tasks with manual ordering, and one-off timed and all-day events are in place
-> and covered by integration tests. Recurring events, reminders and push notifications come
-> next - see the [roadmap](docs/ROADMAP.md).
+> **Status:** the API behind the day planner. Cookie sessions, a one-click demo that opens on
+> a seeded day, calendars, tasks with manual ordering, and one-off timed and all-day events
+> are in place, with optimistic concurrency on every change, and are covered by unit and
+> integration tests. Recurring events, reminders and push notifications come next - see the
+> [roadmap](docs/ROADMAP.md).
 
 ## Stack
 
@@ -40,16 +41,25 @@ flowchart LR
 - **routes** declare each endpoint once with `createRouteBuilder`: the same zod schemas
   validate the request and describe it in the OpenAPI document.
 - **controllers** translate HTTP into service calls and choose status codes.
-- **services** hold the business rules and know nothing about HTTP.
-- **repositories** are the only layer that talks to MongoDB.
-- **domain** holds pure logic (for example the task ordering keys) with no Express or
-  MongoDB imports, so it can be unit-tested on its own.
+- **services** hold the use cases and know nothing about HTTP.
+- **repositories** are the only layer that talks to MongoDB, and return documents.
+- **mappers** turn a document into the shape the API sends, one per resource.
+- **domain** holds pure logic with no Express or MongoDB imports, so it can be unit-tested on
+  its own: task ordering keys, time zone conversion, the rules for an event's schedule, and the
+  day a demo account starts with.
+
+Each resource (`me`, `calendars`, `tasks`, `events`, `demo`) is a vertical slice with its own
+routes, controller, service, schemas and mapper.
 
 Every error response has the same shape, and clients branch on `code`:
 
 ```json
 { "code": "NOT_FOUND", "message": "Route GET /api/v1/nope not found", "requestId": "…" }
 ```
+
+The `message` is English, for logs. Where one code covers several situations a person should
+hear about differently (a `409` can be a taken email, a `429` a full demo), `details.reason`
+says which, from a fixed list in the contract. A client translates from `code` and `reason`.
 
 Calendars, tasks and events carry a `version`, sent as an `ETag`. Changing or deleting one
 requires `If-Match` with the version the change is based on: a stale version answers `412`
@@ -61,6 +71,46 @@ curl -X PATCH /api/v1/tasks/$ID -H 'If-Match: "3"' -d '{"status":"done"}'   # 20
 curl -X PATCH /api/v1/tasks/$ID -H 'If-Match: "3"' -d '{"title":"Again"}'   # 412
 ```
 
+## API at a glance
+
+Everything is under `/api/v1`, and the full contract is browsable at `/api/docs`. Apart from
+the health checks and signing in, a call needs the session cookie, and a call that changes
+something also needs the CSRF token in a header
+([ADR 0007](docs/adr/0007-cookie-sessions-and-csrf.md)).
+
+| Resource  | Endpoints                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| Auth      | `POST /auth/register`, `/auth/login`, `/auth/logout`, `/auth/demo`; `GET /auth/session`                  |
+| Me        | `GET`, `DELETE /me`; `PATCH /me/settings`                                                                |
+| Calendars | `GET`, `POST /calendars`; `PATCH`, `DELETE /calendars/:id`; `PUT /calendars/order`                       |
+| Tasks     | `GET`, `POST /tasks`; `PATCH`, `DELETE /tasks/:id`; `POST /tasks/:id/restore`; `PUT /tasks/:id/position` |
+| Events    | `GET /events?from&to`; `POST /events`; `PATCH`, `DELETE /events/:id`                                     |
+
+`PATCH`, `DELETE` and `PUT /tasks/:id/position` need `If-Match`, as above. A `PATCH` changes only
+the fields it sends: a field left out keeps its stored value.
+
+`POST /auth/demo` creates a throwaway account that is deleted after a day and opens it on a
+full, seeded day in the visitor's time zone, written in the language they ask for (`locale`,
+English or Spanish). It has its own, stricter rate limit, and the number of demo accounts alive
+at once is capped.
+
+An account's language (`settings.locale`) is one of the same two. It can be sent when signing up,
+and changed in `PATCH /me/settings`; the API refuses any other value.
+
+## Time zones
+
+Every account has an IANA time zone, taken from the browser at sign-up. A timed event stores
+instants and the zone it was made in. An all-day event stores plain dates and no zone, because
+"the 12th" is the 12th wherever you are.
+
+`GET /events?from&to` takes two instants and returns what overlaps them. An all-day event matches
+the dates those instants fall on in the account's zone, not in UTC, so a day looks the same to
+the user whatever the server's clock says. The conversions use `Intl` behind `src/domain/time`
+([ADR 0009](docs/adr/0009-time-zone-conversion-with-intl.md)) and are tested with zones on both
+sides of UTC, across daylight saving changes, and at half-hour offsets.
+
+## Project layout
+
 ```text
 src/
   app.ts            builds the Express app from its dependencies (used by tests)
@@ -71,17 +121,19 @@ src/
   services/         use cases, one file per resource
   mappers/          document-to-response mapping, one file per resource
   repositories/     MongoDB queries, one file per collection
-  domain/           framework-free logic with unit tests
+  domain/           framework-free logic with unit tests:
+                      task-order/ time/ events/ demo/
   schemas/          zod schemas shared by validation and docs
   middleware/       sessions and CSRF, error handling, request logging, rate limiting
-  http/             cookie names and parsing
+  http/             cookies and ETags
   openapi/          route builder and document generation
   errors/           AppError and its subclasses
   db/               MongoDB connection and indexes
+scripts/            generate-openapi.ts: writes and checks the contract
 test/
   integration/      HTTP tests against a real mongod
-  helpers/ setup/   test config, per-file databases, global mongod
-openapi/openapi.json  generated contract, committed
+  helpers/ setup/   test config, per-file databases, a signed-in API session, global mongod
+openapi/openapi.json  generated contract, committed; the web app builds its types from it
 ```
 
 ## Getting started
@@ -118,6 +170,13 @@ npm run dev               # http://localhost:4000
 - **Integration tests** (`test/integration`) call the app through Supertest against a real
   `mongod` started once per run by mongodb-memory-server. Each test file gets its own
   database. The first run downloads the `mongod` binary.
+- The integration tests cover the unhappy paths of the main flows: invalid input, no session, no
+  CSRF token, another user's resource, a stale version and a missing document. Calendar
+  reorder, calendar deletion and account deletion do not have their own tests yet; the
+  [roadmap](docs/ROADMAP.md) lists them.
+- Tests that involve dates run in zones on both sides of UTC, since a test that only runs in
+  UTC cannot see a time zone bug
+  ([debugging note 0004](docs/debugging/0004-all-day-event-on-the-wrong-day.md)).
 
 ## Deployment
 
@@ -146,8 +205,8 @@ without printing its value.
 
 ## Conventions
 
-- Branches: `main` (deployed) ← `develop` (integration) ← `feat/*`, `fix/*`, `chore/*`,
-  `docs/*`. See [CONTRIBUTING.md](CONTRIBUTING.md).
+- Branches: `main` (deployed) ← `develop` (integration) ← `feat/*`, `fix/*`, `refactor/*`,
+  `test/*`, `chore/*`, `docs/*`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/), enforced by
   commitlint in a Git hook and in CI.
 

@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as argon2 from 'argon2';
+import { DEFAULT_LOCALE, type Locale } from '../domain/locale.js';
 import { ForbiddenError, UnauthorizedError } from '../errors/app-error.js';
 import type {
   CreateSessionInput,
@@ -64,12 +65,15 @@ function hashesMatch(left: string, right: string): boolean {
   return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-export function defaultUserSettings(timeZone = 'UTC'): UserSettings {
+export function defaultUserSettings(
+  timeZone = 'UTC',
+  locale: Locale = DEFAULT_LOCALE,
+): UserSettings {
   return {
     timeZone,
     weekStartsOn: 1,
     hourCycle: 'h23',
-    locale: 'en',
+    locale,
     theme: 'system',
     accentColor: 'blue',
   };
@@ -92,7 +96,7 @@ export class AuthService {
         email: normalizeEmail(input.email),
         passwordHash: await hashPassword(input.password),
         displayName: input.displayName.trim(),
-        settings: defaultUserSettings(input.timeZone),
+        settings: defaultUserSettings(input.timeZone, input.locale),
       },
       now,
     );
