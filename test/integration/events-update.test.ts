@@ -79,6 +79,7 @@ describe('PATCH /events/:id', () => {
     expect(res.body).toMatchObject({
       code: 'BAD_REQUEST',
       message: 'Event end must be after start',
+      details: { reason: 'end_not_after_start' },
     });
   });
 
@@ -112,7 +113,9 @@ describe('PATCH /events/:id', () => {
       .send({ startDate: '2026-10-14' });
 
     expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ details: { fields: ['startDate'] } });
+    expect(res.body).toMatchObject({
+      details: { reason: 'fields_of_other_kind', fields: ['startDate'] },
+    });
   });
 
   it('rejects instants on an all-day event', async () => {

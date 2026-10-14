@@ -77,7 +77,10 @@ export class UsersRepository {
       await this.users.insertOne(user);
     } catch (error) {
       if (isDuplicateKeyError(error)) {
-        throw new ConflictError('Email is already registered', { field: 'email' });
+        throw new ConflictError('Email is already registered', {
+          reason: 'email_taken',
+          field: 'email',
+        });
       }
       throw error;
     }

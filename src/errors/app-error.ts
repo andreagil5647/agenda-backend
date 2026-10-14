@@ -18,12 +18,29 @@ export const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
+/**
+ * Why a request failed, where the code alone is too coarse to tell a client
+ * what to say (a CONFLICT can be a taken email, a RATE_LIMITED a full demo).
+ * Sent as `details.reason`; like the codes, these are part of the contract.
+ */
+export const ERROR_REASONS = [
+  'stale_version',
+  'email_taken',
+  'demo_full',
+  'end_not_after_start',
+  'fields_of_other_kind',
+] as const;
+
+export type ErrorReason = (typeof ERROR_REASONS)[number];
+
+export type ErrorDetails = { reason?: ErrorReason } & Record<string, unknown>;
+
 export class AppError extends Error {
   constructor(
     readonly status: number,
     readonly code: ErrorCode,
     message: string,
-    readonly details?: Record<string, unknown>,
+    readonly details?: ErrorDetails,
   ) {
     super(message);
     this.name = new.target.name;
@@ -31,7 +48,7 @@ export class AppError extends Error {
 }
 
 export class BadRequestError extends AppError {
-  constructor(message = 'Bad request', details?: Record<string, unknown>) {
+  constructor(message = 'Bad request', details?: ErrorDetails) {
     super(400, 'BAD_REQUEST', message, details);
   }
 }
@@ -55,27 +72,27 @@ export class NotFoundError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message: string, details?: Record<string, unknown>) {
+  constructor(message: string, details?: ErrorDetails) {
     super(409, 'CONFLICT', message, details);
   }
 }
 
 /** The resource is no longer at the version the client based its change on. */
 export class PreconditionFailedError extends AppError {
-  constructor(message: string, details?: Record<string, unknown>) {
+  constructor(message: string, details?: ErrorDetails) {
     super(412, 'PRECONDITION_FAILED', message, details);
   }
 }
 
 /** The request must say which version of the resource it expects to change. */
 export class PreconditionRequiredError extends AppError {
-  constructor(message: string, details?: Record<string, unknown>) {
+  constructor(message: string, details?: ErrorDetails) {
     super(428, 'PRECONDITION_REQUIRED', message, details);
   }
 }
 
 export class RateLimitedError extends AppError {
-  constructor(message = 'Too many requests, please try again later') {
-    super(429, 'RATE_LIMITED', message);
+  constructor(message = 'Too many requests, please try again later', details?: ErrorDetails) {
+    super(429, 'RATE_LIMITED', message, details);
   }
 }

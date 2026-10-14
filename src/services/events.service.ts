@@ -23,6 +23,7 @@ export interface EventsRepositories {
 }
 
 const END_NOT_AFTER_START = 'Event end must be after start';
+const END_NOT_AFTER_START_DETAILS = { reason: 'end_not_after_start' } as const;
 
 function toCreateEventInput(input: CreateEventRequest): CreateEventInput {
   const shared = {
@@ -36,13 +37,13 @@ function toCreateEventInput(input: CreateEventRequest): CreateEventInput {
     const startUtc = new Date(input.startUtc);
     const endUtc = new Date(input.endUtc);
     if (endUtc <= startUtc) {
-      throw new BadRequestError(END_NOT_AFTER_START);
+      throw new BadRequestError(END_NOT_AFTER_START, END_NOT_AFTER_START_DETAILS);
     }
     return { ...shared, kind: input.kind, startUtc, endUtc, timeZone: input.timeZone };
   }
 
   if (input.endDate <= input.startDate) {
-    throw new BadRequestError(END_NOT_AFTER_START);
+    throw new BadRequestError(END_NOT_AFTER_START, END_NOT_AFTER_START_DETAILS);
   }
   return { ...shared, kind: input.kind, startDate: input.startDate, endDate: input.endDate };
 }
@@ -52,11 +53,12 @@ function assertPatchFitsEvent(event: EventDocument, update: UpdateEventInput): v
   if (problem?.reason === 'fields_of_other_kind') {
     const kind = event.kind === 'timed' ? 'a timed' : 'an all-day';
     throw new BadRequestError(`${problem.fields.join(', ')} cannot be set on ${kind} event`, {
+      reason: problem.reason,
       fields: problem.fields,
     });
   }
   if (problem) {
-    throw new BadRequestError(END_NOT_AFTER_START);
+    throw new BadRequestError(END_NOT_AFTER_START, END_NOT_AFTER_START_DETAILS);
   }
 }
 

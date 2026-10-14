@@ -137,7 +137,10 @@ describe('auth endpoints', () => {
     const res = await register(app, 'duplicate@example.com');
 
     expect(res.status).toBe(409);
-    expect(res.body).toMatchObject({ code: 'CONFLICT', details: { field: 'email' } });
+    expect(res.body).toMatchObject({
+      code: 'CONFLICT',
+      details: { reason: 'email_taken', field: 'email' },
+    });
   });
 
   it('logs in and returns the current session from cookies', async () => {

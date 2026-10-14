@@ -36,6 +36,7 @@ Known gaps in the done items, to close before the next feature:
       event kind
 - [x] All-day events are matched against the account's local dates
       ([debugging note 0004](debugging/0004-all-day-event-on-the-wrong-day.md))
+- [x] Errors carry a stable `details.reason` where the code is too coarse to translate from
 - [x] Demo accounts: a cap on how many exist at once, a stricter rate limit on
       `POST /auth/demo`, and a seeded day laid out on the visitor's wall clock
 - [ ] `scripts/seed-demo.ts`, to seed the same demo day into a local account
