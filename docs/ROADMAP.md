@@ -39,6 +39,8 @@ Known gaps in the done items, to close before the next feature:
 - [x] Errors carry a stable `details.reason` where the code is too coarse to translate from
 - [x] Demo accounts: a cap on how many exist at once, a stricter rate limit on
       `POST /auth/demo`, and a seeded day laid out on the visitor's wall clock
+- [x] The demo day is written in English or Spanish, and the language of an account is
+      validated against that list (`src/domain/locale.ts`)
 - [ ] `scripts/seed-demo.ts`, to seed the same demo day into a local account
 - [ ] Integration tests for calendar reorder, calendar deletion and account deletion
 - [ ] Lint rule that keeps `src/domain` free of Express and MongoDB imports, and a coverage

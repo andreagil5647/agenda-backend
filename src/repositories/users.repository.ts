@@ -6,6 +6,7 @@ import {
   type Filter,
   type MatchKeysAndValues,
 } from 'mongodb';
+import type { Locale } from '../domain/locale.js';
 import { ConflictError, NotFoundError } from '../errors/app-error.js';
 import {
   byIdFilter,
@@ -19,7 +20,7 @@ export interface UserSettings {
   timeZone: string;
   weekStartsOn: 0 | 1 | 6;
   hourCycle: 'h12' | 'h23';
-  locale: string;
+  locale: Locale;
   theme: 'system' | 'light' | 'dark';
   accentColor: string;
 }

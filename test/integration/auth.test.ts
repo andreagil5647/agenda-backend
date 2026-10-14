@@ -143,6 +143,30 @@ describe('auth endpoints', () => {
     });
   });
 
+  it('starts the account in the language it is asked for, and in English otherwise', async () => {
+    const spanish = await request(app).post('/api/v1/auth/register').set('Origin', origin).send({
+      email: 'spanish@example.com',
+      password: 'correct horse battery staple',
+      displayName: 'Andrea',
+      locale: 'es',
+    });
+    const unspecified = await register(app, 'unspecified@example.com');
+
+    expect(spanish.body).toMatchObject({ user: { settings: { locale: 'es' } } });
+    expect(unspecified.body).toMatchObject({ user: { settings: { locale: 'en' } } });
+  });
+
+  it('rejects a language the product is not written in', async () => {
+    const res = await request(app).post('/api/v1/auth/register').set('Origin', origin).send({
+      email: 'french@example.com',
+      password: 'correct horse battery staple',
+      displayName: 'Andrea',
+      locale: 'fr',
+    });
+
+    expect(res.status).toBe(422);
+  });
+
   it('logs in and returns the current session from cookies', async () => {
     await register(app, 'login@example.com');
 

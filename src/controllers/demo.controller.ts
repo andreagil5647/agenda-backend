@@ -8,7 +8,7 @@ export class DemoController {
   constructor(private readonly demoService: DemoService) {}
 
   start = async ({ body }: { body: DemoRequest }, _req: Request, res: Response): Promise<void> => {
-    const session = await this.demoService.createDemoSession(body.timeZone);
+    const session = await this.demoService.createDemoSession(body);
     setSessionCookies(res, session);
     res.status(201).json(toSessionView(session, session.csrfToken));
   };
